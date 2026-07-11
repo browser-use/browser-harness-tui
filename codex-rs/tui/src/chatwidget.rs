@@ -360,6 +360,7 @@ mod pets;
 mod session_flow;
 mod session_header;
 use self::session_header::SessionHeader;
+mod browser_harness;
 mod hook_lifecycle;
 mod hooks;
 mod interaction;

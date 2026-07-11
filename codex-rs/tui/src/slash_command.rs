@@ -20,6 +20,7 @@ pub enum SlashCommand {
     Profile,
     #[strum(serialize = "sync-cookies")]
     SyncCookies,
+    Secrets,
     #[strum(to_string = "context", serialize = "status")]
     Status,
     Model,
@@ -99,10 +100,11 @@ impl SlashCommand {
             SlashCommand::Browser => "change browser backend",
             SlashCommand::Profile => "set default Chrome profile",
             SlashCommand::SyncCookies => "sync local cookies",
+            SlashCommand::Secrets => "manage website passwords and 2FA codes",
             SlashCommand::Auth => "sign in to a provider",
             SlashCommand::Reload => "restart the UI in this terminal",
             SlashCommand::Update => "install the latest release",
-            SlashCommand::Init => "create an AGENTS.md file with instructions for Codex",
+            SlashCommand::Init => "create an AGENTS.md file with instructions for the agent",
             SlashCommand::Compact => "summarize conversation to prevent hitting the context limit",
             SlashCommand::Review => "review my current changes and find issues",
             SlashCommand::Rename => "rename the current thread",
@@ -116,7 +118,7 @@ impl SlashCommand {
             SlashCommand::Raw => "toggle raw scrollback mode for copy-friendly terminal selection",
             SlashCommand::Diff => "show git diff (including untracked files)",
             SlashCommand::Mention => "mention a file",
-            SlashCommand::Skills => "use skills to improve how Codex performs specific tasks",
+            SlashCommand::Skills => "use skills to improve how the agent performs specific tasks",
             SlashCommand::Import => {
                 "import setup, this project, and recent chats from another coding agent"
             }
@@ -212,6 +214,7 @@ impl SlashCommand {
             | SlashCommand::Browser
             | SlashCommand::Profile
             | SlashCommand::SyncCookies
+            | SlashCommand::Secrets
             | SlashCommand::Auth
             | SlashCommand::Reload
             | SlashCommand::Update
@@ -297,6 +300,7 @@ impl SlashCommand {
                 | SlashCommand::Browser
                 | SlashCommand::Profile
                 | SlashCommand::SyncCookies
+                | SlashCommand::Secrets
                 | SlashCommand::Status
                 | SlashCommand::Model
                 | SlashCommand::Goal

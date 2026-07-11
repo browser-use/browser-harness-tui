@@ -19,6 +19,7 @@ pub(crate) enum Variant {
 }
 
 #[derive(Clone, Copy, Debug)]
+#[allow(dead_code)] // full Browser Use palette kept intact for future surfaces
 pub(crate) struct Palette {
     pub variant: Variant,
     pub text: (u8, u8, u8),
@@ -133,6 +134,7 @@ pub(crate) fn palette_for(terminal_bg: Option<(u8, u8, u8)>) -> Palette {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn is_light() -> bool {
     palette().variant == Variant::Light
 }
@@ -142,14 +144,17 @@ pub(crate) fn color(rgb: (u8, u8, u8)) -> Color {
     best_color(rgb)
 }
 
+#[allow(dead_code)]
 pub(crate) fn text() -> Style {
     Style::default().fg(color(palette().text))
 }
 
+#[allow(dead_code)]
 pub(crate) fn bold() -> Style {
     text().add_modifier(Modifier::BOLD)
 }
 
+#[allow(dead_code)]
 pub(crate) fn muted() -> Style {
     Style::default().fg(color(palette().muted))
 }
@@ -168,6 +173,7 @@ pub(crate) fn border() -> Style {
     Style::default().fg(color(palette().border))
 }
 
+#[allow(dead_code)]
 pub(crate) fn link() -> Style {
     Style::default()
         .fg(color(palette().link))
@@ -176,42 +182,51 @@ pub(crate) fn link() -> Style {
 
 /// Background fill for a user prompt block in the transcript, so the message
 /// the user sent stands apart from the agent's replies.
+#[allow(dead_code)]
 pub(crate) fn user_prompt_bg() -> Color {
     color(palette().user_prompt_background)
 }
 
+#[allow(dead_code)]
 pub(crate) fn user_prompt_text() -> Style {
     text().bg(user_prompt_bg())
 }
 
 /// The accent-colored `>` prefix on a user prompt, sharing the prompt's
 /// highlight background.
+#[allow(dead_code)]
 pub(crate) fn user_prompt_accent() -> Style {
     accent().bg(user_prompt_bg())
 }
 
+#[allow(dead_code)]
 pub(crate) fn done() -> Style {
     Style::default().fg(color(palette().done))
 }
 
 /// Style for the list item currently in use (the active model/provider),
 /// distinct from the cursor highlight so the active choice stands out.
+#[allow(dead_code)]
 pub(crate) fn current() -> Style {
     done().add_modifier(Modifier::BOLD)
 }
 
+#[allow(dead_code)]
 pub(crate) fn running() -> Style {
     Style::default().fg(color(palette().running))
 }
 
+#[allow(dead_code)]
 pub(crate) fn failed() -> Style {
     Style::default().fg(color(palette().failed))
 }
 
+#[allow(dead_code)]
 pub(crate) fn thought() -> Style {
     Style::default().fg(color(palette().thought))
 }
 
+#[allow(dead_code)]
 pub(crate) fn selection() -> Style {
     Style::default().bg(color(palette().selection_background))
 }

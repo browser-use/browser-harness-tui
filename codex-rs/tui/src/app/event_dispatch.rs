@@ -62,6 +62,17 @@ impl App {
                 )
                 .await;
             }
+            AppEvent::BrowserHarnessSecretsPrompt { flow, domain, name } => {
+                self.chat_widget.open_secrets_prompt(flow, domain, name);
+            }
+            AppEvent::BrowserHarnessCliResult {
+                message,
+                hint,
+                is_error,
+            } => {
+                self.chat_widget
+                    .on_browser_harness_cli_result(message, hint, is_error);
+            }
             AppEvent::OpenResumePicker => {
                 let picker_app_server = match crate::start_app_server_for_picker(
                     &self.config,

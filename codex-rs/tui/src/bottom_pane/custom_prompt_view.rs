@@ -40,6 +40,8 @@ pub(crate) struct CustomPromptView {
     textarea_state: RefCell<TextAreaState>,
     paste_burst: PasteBurst,
     completion: Option<ViewCompletion>,
+    /// Render input as bullets (secret values).
+    masked: bool,
 }
 
 impl CustomPromptView {
@@ -65,7 +67,14 @@ impl CustomPromptView {
             textarea_state: RefCell::new(TextAreaState::default()),
             paste_burst: PasteBurst::default(),
             completion: None,
+            masked: false,
         }
+    }
+
+    /// Render typed input as bullets — used for secret values.
+    pub(crate) fn masked(mut self) -> Self {
+        self.masked = true;
+        self
     }
 
     fn handle_key_event_at(&mut self, key_event: KeyEvent, now: Instant) {
@@ -232,7 +241,12 @@ impl Renderable for CustomPromptView {
                     height: text_area_height,
                 };
                 let mut state = self.textarea_state.borrow_mut();
-                StatefulWidgetRef::render_ref(&(&self.textarea), textarea_rect, buf, &mut state);
+                if self.masked {
+                    self.textarea
+                        .render_ref_masked(textarea_rect, buf, &mut state, '•');
+                } else {
+                    StatefulWidgetRef::render_ref(&(&self.textarea), textarea_rect, buf, &mut state);
+                }
                 if self.textarea.text().is_empty() {
                     Paragraph::new(Line::from(self.placeholder.clone().dim()))
                         .render(textarea_rect, buf);

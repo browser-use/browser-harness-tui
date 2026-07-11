@@ -148,6 +148,14 @@ pub(crate) enum KeymapEditIntent {
     ReplaceOne { old_key: String },
 }
 
+/// Which /secrets flow is being staged (Browser Harness fork).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum BrowserHarnessSecretsFlow {
+    Password,
+    Totp,
+    Remove,
+}
+
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub(crate) enum AppEvent {
@@ -220,6 +228,22 @@ pub(crate) enum AppEvent {
 
     /// Open the resume picker inside the running TUI session.
     OpenResumePicker,
+
+    /// Browser Harness fork: advance the staged /secrets entry flow. `None`
+    /// fields are still to be collected via chained prompts.
+    BrowserHarnessSecretsPrompt {
+        flow: BrowserHarnessSecretsFlow,
+        domain: Option<String>,
+        name: Option<String>,
+    },
+
+    /// Browser Harness fork: surface the result of a background
+    /// `browser-harness` CLI invocation in the transcript.
+    BrowserHarnessCliResult {
+        message: String,
+        hint: Option<String>,
+        is_error: bool,
+    },
 
     /// Open the external agent migration picker inside the running TUI session.
     OpenExternalAgentConfigMigration,

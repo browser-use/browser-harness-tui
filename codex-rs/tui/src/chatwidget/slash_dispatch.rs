@@ -228,14 +228,10 @@ impl ChatWidget {
                 self.app_event_tx.send(AppEvent::OpenResumePicker);
             }
             SlashCommand::Browser => {
-                self.add_info_message(
-                    "Browser backend selection is managed by Browser Harness for this fork."
-                        .to_string(),
-                    Some(
-                        "Start this TUI through `browser-harness tui` to use its configured browser backend."
-                            .to_string(),
-                    ),
-                );
+                self.open_browser_backend_popup();
+            }
+            SlashCommand::Secrets => {
+                self.open_secrets_popup();
             }
             SlashCommand::Profile => {
                 self.add_info_message(
@@ -1047,6 +1043,7 @@ impl ChatWidget {
             | SlashCommand::Browser
             | SlashCommand::Profile
             | SlashCommand::SyncCookies
+            | SlashCommand::Secrets
             | SlashCommand::Auth
             | SlashCommand::Reload
             | SlashCommand::Update
