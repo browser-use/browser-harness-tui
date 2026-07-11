@@ -227,6 +227,56 @@ impl ChatWidget {
             SlashCommand::Resume => {
                 self.app_event_tx.send(AppEvent::OpenResumePicker);
             }
+            SlashCommand::Browser => {
+                self.add_info_message(
+                    "Browser backend selection is managed by Browser Harness for this fork."
+                        .to_string(),
+                    Some(
+                        "Start this TUI through `browser-harness tui` to use its configured browser backend."
+                            .to_string(),
+                    ),
+                );
+            }
+            SlashCommand::Profile => {
+                self.add_info_message(
+                    "Chrome profile selection is managed by Browser Harness for this fork."
+                        .to_string(),
+                    Some(
+                        "Use the browser-harness profile commands before starting the agent."
+                            .to_string(),
+                    ),
+                );
+            }
+            SlashCommand::SyncCookies => {
+                self.add_info_message(
+                    "Cookie sync is managed by Browser Harness for this fork.".to_string(),
+                    Some(
+                        "Use the browser-harness cookie/profile workflow before starting the agent."
+                            .to_string(),
+                    ),
+                );
+            }
+            SlashCommand::Auth => {
+                self.add_info_message(
+                    "Provider auth is managed outside this TUI.".to_string(),
+                    Some(
+                        "Use Browser Use terminal or environment credentials for provider login."
+                            .to_string(),
+                    ),
+                );
+            }
+            SlashCommand::Reload => {
+                self.add_info_message(
+                    "Reload by restarting this Browser Harness TUI process.".to_string(),
+                    /*hint*/ None,
+                );
+            }
+            SlashCommand::Update => {
+                self.add_info_message(
+                    "Updates are managed from the Browser Harness/Codex fork checkout.".to_string(),
+                    Some("Rebuild the forked binary after pulling changes.".to_string()),
+                );
+            }
             SlashCommand::Fork => {
                 self.app_event_tx.send(AppEvent::ForkCurrentSession);
             }
@@ -994,6 +1044,12 @@ impl ChatWidget {
         match cmd {
             SlashCommand::Ide
             | SlashCommand::Status
+            | SlashCommand::Browser
+            | SlashCommand::Profile
+            | SlashCommand::SyncCookies
+            | SlashCommand::Auth
+            | SlashCommand::Reload
+            | SlashCommand::Update
             | SlashCommand::DebugConfig
             | SlashCommand::Ps
             | SlashCommand::Stop

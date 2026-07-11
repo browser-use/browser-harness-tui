@@ -12,7 +12,23 @@ use strum_macros::IntoStaticStr;
 pub enum SlashCommand {
     // DO NOT ALPHA-SORT! Enum order is presentation order in the popup, so
     // more frequently used commands should be listed first.
+    #[strum(to_string = "task", serialize = "new")]
+    New,
+    #[strum(to_string = "history", serialize = "resume")]
+    Resume,
+    Browser,
+    Profile,
+    #[strum(serialize = "sync-cookies")]
+    SyncCookies,
+    #[strum(to_string = "context", serialize = "status")]
+    Status,
     Model,
+    Goal,
+    Feedback,
+    Auth,
+    Reload,
+    Update,
+    Exit,
     Ide,
     Permissions,
     Keymap,
@@ -30,16 +46,13 @@ pub enum SlashCommand {
     Hooks,
     Review,
     Rename,
-    New,
     Archive,
     Delete,
-    Resume,
     Fork,
     App,
     Init,
     Compact,
     Plan,
-    Goal,
     Agent,
     Side,
     Btw,
@@ -47,7 +60,6 @@ pub enum SlashCommand {
     Raw,
     Diff,
     Mention,
-    Status,
     DebugConfig,
     Title,
     Statusline,
@@ -59,8 +71,6 @@ pub enum SlashCommand {
     Plugins,
     Logout,
     Quit,
-    Exit,
-    Feedback,
     Rollout,
     Ps,
     #[strum(to_string = "stop", serialize = "clean")]
@@ -84,18 +94,24 @@ impl SlashCommand {
     pub fn description(self) -> &'static str {
         match self {
             SlashCommand::Feedback => "send logs to maintainers",
-            SlashCommand::New => "start a new chat during a conversation",
+            SlashCommand::New => "start a new task",
+            SlashCommand::Resume => "browse previous tasks",
+            SlashCommand::Browser => "change browser backend",
+            SlashCommand::Profile => "set default Chrome profile",
+            SlashCommand::SyncCookies => "sync local cookies",
+            SlashCommand::Auth => "sign in to a provider",
+            SlashCommand::Reload => "restart the UI in this terminal",
+            SlashCommand::Update => "install the latest release",
             SlashCommand::Init => "create an AGENTS.md file with instructions for Codex",
             SlashCommand::Compact => "summarize conversation to prevent hitting the context limit",
             SlashCommand::Review => "review my current changes and find issues",
             SlashCommand::Rename => "rename the current thread",
-            SlashCommand::Resume => "resume a saved chat",
             SlashCommand::Archive => "archive this session and exit",
             SlashCommand::Delete => "permanently delete this session and exit",
             SlashCommand::Clear => "clear the terminal and start a new chat",
             SlashCommand::Fork => "fork the current chat",
             SlashCommand::App => "continue this session in Codex Desktop",
-            SlashCommand::Quit | SlashCommand::Exit => "exit Codex",
+            SlashCommand::Quit | SlashCommand::Exit => "quit browser harness",
             SlashCommand::Copy => "copy last response as markdown",
             SlashCommand::Raw => "toggle raw scrollback mode for copy-friendly terminal selection",
             SlashCommand::Diff => "show git diff (including untracked files)",
@@ -105,7 +121,7 @@ impl SlashCommand {
                 "import setup, this project, and recent chats from another coding agent"
             }
             SlashCommand::Hooks => "view and manage lifecycle hooks",
-            SlashCommand::Status => "show current session configuration and token usage",
+            SlashCommand::Status => "inspect context window attribution",
             SlashCommand::DebugConfig => "show config layers and requirement sources for debugging",
             SlashCommand::Title => "configure which items appear in the terminal title",
             SlashCommand::Statusline => "configure which items appear in the status line",
@@ -182,7 +198,7 @@ impl SlashCommand {
                 | SlashCommand::Diff
                 | SlashCommand::Mention
                 | SlashCommand::Status
-                | SlashCommand::Ide
+                | SlashCommand::Feedback
         )
     }
 
@@ -193,6 +209,12 @@ impl SlashCommand {
             | SlashCommand::Archive
             | SlashCommand::Delete
             | SlashCommand::Resume
+            | SlashCommand::Browser
+            | SlashCommand::Profile
+            | SlashCommand::SyncCookies
+            | SlashCommand::Auth
+            | SlashCommand::Reload
+            | SlashCommand::Update
             | SlashCommand::Fork
             | SlashCommand::Init
             | SlashCommand::Compact
@@ -261,8 +283,30 @@ impl SlashCommand {
 pub fn built_in_slash_commands() -> Vec<(&'static str, SlashCommand)> {
     SlashCommand::iter()
         .filter(|command| command.is_visible())
+        .filter(|command| command.is_browser_harness_command())
         .map(|c| (c.command(), c))
         .collect()
+}
+
+impl SlashCommand {
+    fn is_browser_harness_command(self) -> bool {
+        matches!(
+            self,
+            SlashCommand::New
+                | SlashCommand::Resume
+                | SlashCommand::Browser
+                | SlashCommand::Profile
+                | SlashCommand::SyncCookies
+                | SlashCommand::Status
+                | SlashCommand::Model
+                | SlashCommand::Goal
+                | SlashCommand::Feedback
+                | SlashCommand::Auth
+                | SlashCommand::Reload
+                | SlashCommand::Update
+                | SlashCommand::Exit
+        )
+    }
 }
 
 #[cfg(test)]

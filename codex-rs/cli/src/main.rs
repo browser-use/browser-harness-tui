@@ -85,7 +85,7 @@ use codex_protocol::protocol::AskForApproval;
 use codex_protocol::user_input::UserInput;
 use codex_terminal_detection::TerminalName;
 
-/// Codex CLI
+/// Browser Harness Agent CLI
 ///
 /// If no subcommand is specified, options will be forwarded to the interactive CLI.
 #[derive(Debug, Parser)]
@@ -94,11 +94,8 @@ use codex_terminal_detection::TerminalName;
     version,
     // If a sub‑command is given, ignore requirements of the default args.
     subcommand_negates_reqs = true,
-    // The executable is sometimes invoked via a platform‑specific name like
-    // `codex-x86_64-unknown-linux-musl`, but the help output should always use
-    // the generic `codex` command name that users run.
-    bin_name = "codex",
-    override_usage = "codex [OPTIONS] [PROMPT]\n       codex [OPTIONS] <COMMAND> [ARGS]"
+    bin_name = "browser-harness-agent",
+    override_usage = "browser-harness-agent [OPTIONS] [PROMPT]\n       browser-harness-agent [OPTIONS] <COMMAND> [ARGS]"
 )]
 struct MultitoolCli {
     #[clap(flatten)]
@@ -119,7 +116,7 @@ struct MultitoolCli {
 
 #[derive(Debug, clap::Subcommand)]
 enum Subcommand {
-    /// Run Codex non-interactively.
+    /// Run Browser Harness Agent non-interactively.
     #[clap(visible_alias = "e")]
     Exec(ExecCli),
 
@@ -132,45 +129,55 @@ enum Subcommand {
     /// Remove stored authentication credentials.
     Logout(LogoutCommand),
 
-    /// Manage external MCP servers for Codex.
+    /// Manage external MCP servers.
+    #[clap(hide = true)]
     Mcp(McpCli),
 
-    /// Manage Codex plugins.
+    /// Manage plugins.
+    #[clap(hide = true)]
     Plugin(PluginCli),
 
-    /// Start Codex as an MCP server (stdio).
+    /// Start as an MCP server (stdio).
+    #[clap(hide = true)]
     McpServer(McpServerCommand),
 
     /// [experimental] Run the app server or related tooling.
+    #[clap(hide = true)]
     AppServer(AppServerCommand),
 
     /// [experimental] Manage the app-server daemon with remote control enabled.
+    #[clap(hide = true)]
     RemoteControl(RemoteControlCommand),
 
-    /// Launch the Codex desktop app (opens the app installer if missing).
+    /// Launch the desktop app (opens the app installer if missing).
     #[cfg(any(target_os = "macos", target_os = "windows"))]
+    #[clap(hide = true)]
     App(app_cmd::AppCommand),
 
     /// Generate shell completion scripts.
     Completion(CompletionCommand),
 
-    /// Update Codex to the latest version.
+    /// Update Browser Harness Agent to the latest version.
+    #[clap(hide = true)]
     Update,
 
-    /// Diagnose local Codex installation, config, auth, and runtime health.
+    /// Diagnose local installation, config, auth, and runtime health.
+    #[clap(hide = true)]
     Doctor(DoctorCommand),
 
-    /// Run commands within a Codex-provided sandbox.
+    /// Run commands within the bundled sandbox.
+    #[clap(hide = true)]
     Sandbox(HostSandboxArgs),
 
     /// Debugging tools.
+    #[clap(hide = true)]
     Debug(DebugCommand),
 
     /// Execpolicy tooling.
     #[clap(hide = true)]
     Execpolicy(ExecpolicyCommand),
 
-    /// Apply the latest diff produced by Codex agent as a `git apply` to your local working tree.
+    /// Apply the latest diff produced by the agent as a `git apply` to your local working tree.
     #[clap(visible_alias = "a")]
     Apply(ApplyCommand),
 
@@ -190,7 +197,7 @@ enum Subcommand {
     Fork(ForkCommand),
 
     /// [EXPERIMENTAL] Browse tasks from Codex Cloud and apply changes locally.
-    #[clap(name = "cloud", alias = "cloud-tasks")]
+    #[clap(name = "cloud", alias = "cloud-tasks", hide = true)]
     Cloud(CloudTasksCli),
 
     /// Internal: run the responses API proxy.
@@ -202,9 +209,11 @@ enum Subcommand {
     StdioToUds(StdioToUdsCommand),
 
     /// [EXPERIMENTAL] Run the standalone exec-server service.
+    #[clap(hide = true)]
     ExecServer(ExecServerCommand),
 
     /// Inspect feature flags.
+    #[clap(hide = true)]
     Features(FeaturesCli),
 }
 

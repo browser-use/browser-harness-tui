@@ -1997,20 +1997,20 @@ impl Drop for ChatWidget {
 }
 
 const PLACEHOLDERS: [&str; 8] = [
-    "Explain this codebase",
-    "Summarize recent commits",
-    "Implement {feature}",
-    "Find and fix a bug in @filename",
-    "Write tests for @filename",
-    "Improve documentation in @filename",
-    "Run /review on my current changes",
-    "Use /skills to list available skills",
+    "Open a site and complete a task",
+    "Find the requested information in the browser",
+    "Use the browser to fill out this workflow",
+    "Check the current page and summarize what changed",
+    "Debug why this browser task failed",
+    "Save the result under agent_outputs/",
+    "Start a new task with /task",
+    "Inspect context with /context",
 ];
 
 const SIDE_PLACEHOLDERS: [&str; 3] = [
-    "Check recently modified functions for compatibility",
-    "How many files have been modified?",
-    "Will this algorithm scale well?",
+    "Check the current browser state",
+    "Summarize the last browser action",
+    "What should the next browser step be?",
 ];
 
 // Extract the first bold (Markdown) element in the form **...** from `s`.

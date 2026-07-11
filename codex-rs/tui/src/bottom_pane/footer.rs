@@ -952,8 +952,9 @@ fn shortcut_overlay_lines(state: ShortcutsState) -> Vec<Line<'static>> {
     let mut lines = build_columns(ordered);
     lines.push(Line::from(""));
     lines.push(Line::from(vec![
-        "customize shortcuts with ".into(),
-        "/keymap".cyan(),
+        "open commands with ".into(),
+        "/".cyan(),
+        " for Browser Harness actions".into(),
     ]));
     lines
 }
