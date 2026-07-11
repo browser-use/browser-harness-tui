@@ -1770,7 +1770,13 @@ async fn ambient_pet_reduces_stream_width_and_composer_text_width() {
     let disabled_row = buffer_row_containing(disabled_terminal.backend().buffer(), "Minim")
         .expect("disabled-pet composer row should render draft");
 
-    assert!(row_tail_is_blank(&pet_row, /*start_col*/ 69));
+    // Beyond the pet's reserved columns only the composer's right border may
+    // render; the draft text itself must stay inside the narrowed width.
+    let pet_tail: String = pet_row.chars().skip(/*start_col*/ 69).collect();
+    assert!(
+        pet_tail.trim().is_empty() || pet_tail.trim() == "│",
+        "expected only border/blank past col 69, got {pet_tail:?}"
+    );
     assert!(!row_tail_is_blank(&disabled_row, /*start_col*/ 69));
 }
 

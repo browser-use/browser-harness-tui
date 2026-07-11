@@ -937,7 +937,7 @@ async fn permissions_selection_marks_auto_review_current_after_session_configure
     let popup = render_bottom_popup(&chat, /*width*/ 120);
 
     assert!(
-        popup.contains("Approve for me (current)"),
+        popup.contains("Approve for me *"),
         "expected Approve for me to be current after SessionConfigured sync: {popup}"
     );
 }
@@ -987,7 +987,7 @@ async fn permissions_selection_marks_auto_review_current_with_custom_workspace_w
     let popup = render_bottom_popup(&chat, /*width*/ 120);
 
     assert!(
-        popup.contains("Approve for me (current)"),
+        popup.contains("Approve for me *"),
         "expected Approve for me to be current even with custom workspace-write details: {popup}"
     );
 }
@@ -1058,7 +1058,7 @@ async fn permissions_selection_sends_approvals_reviewer_in_override_turn_context
     assert!(
         popup
             .lines()
-            .any(|line| line.contains("(current)") && line.contains('›')),
+            .any(|line| line.contains(" *") && line.contains('›')),
         "expected permissions popup to open with the current preset selected: {popup}"
     );
 

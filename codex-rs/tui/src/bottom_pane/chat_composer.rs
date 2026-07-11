@@ -4553,11 +4553,12 @@ mod tests {
             "expected a spacing row above the footer hints",
         );
 
+        // The composer's rounded bottom border separates the input from the
+        // footer hints (Browser Use Terminal style).
         let spacing_row = row_to_string(hint_row_idx - 1);
-        assert_eq!(
-            spacing_row.trim(),
-            "",
-            "expected blank spacing row above hints but saw: {spacing_row:?}",
+        assert!(
+            spacing_row.trim_start().starts_with('╰'),
+            "expected composer bottom border above hints but saw: {spacing_row:?}",
         );
     }
 
@@ -4854,13 +4855,14 @@ mod tests {
         );
         let area = Rect::new(0, 0, 40, 5);
 
+        // The bordered composer shifts the textarea two columns right.
         composer.set_text_content("!git".to_string(), Vec::new(), Vec::new());
         composer.move_cursor_to_end();
-        assert_eq!(composer.cursor_pos(area), Some((5, 1)));
+        assert_eq!(composer.cursor_pos(area), Some((7, 1)));
 
         composer.set_text_content("! git".to_string(), Vec::new(), Vec::new());
         composer.move_cursor_to_end();
-        assert_eq!(composer.cursor_pos(area), Some((6, 1)));
+        assert_eq!(composer.cursor_pos(area), Some((8, 1)));
     }
 
     #[test]
@@ -4884,7 +4886,8 @@ mod tests {
         let mut buf = Buffer::empty(area);
         composer.render(area, &mut buf);
 
-        let prompt_cell = &buf[(0, 1)];
+        // Column 0/1 hold the composer border and margin; the prompt sits at x=2.
+        let prompt_cell = &buf[(2, 1)];
         assert_eq!(prompt_cell.symbol(), "!");
         assert_eq!(prompt_cell.style().fg, Some(Color::LightRed));
 
@@ -7961,12 +7964,13 @@ mod tests {
             "Ask Codex to do anything".to_string(),
             /*disable_paste_burst*/ false,
         );
-        type_chars_humanlike(&mut composer, &['/', 'r', 'e', 's']);
+        // Resume is surfaced as /history in this fork (alias: /resume).
+        type_chars_humanlike(&mut composer, &['/', 'h', 'i', 's']);
 
         match &composer.popups.active {
             ActivePopup::Command(popup) => match popup.selected_item() {
                 Some(CommandItem::Builtin(cmd)) => {
-                    assert_eq!(cmd.command(), "resume")
+                    assert_eq!(cmd.command(), "history")
                 }
                 Some(CommandItem::ServiceTier(command)) => {
                     panic!("expected resume command, got service tier {command:?}")
@@ -8639,7 +8643,7 @@ mod tests {
         let (_result, _needs_redraw) =
             composer.handle_key_event(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
 
-        assert_eq!(composer.draft.textarea.text(), "/compact ");
+        assert_eq!(composer.draft.textarea.text(), "/context ");
         assert_eq!(
             composer.draft.textarea.cursor(),
             composer.draft.textarea.text().len()

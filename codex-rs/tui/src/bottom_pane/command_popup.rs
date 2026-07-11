@@ -153,6 +153,13 @@ impl CommandPopup {
                 if matches!(command, CommandItem::Builtin(cmd) if ALIAS_COMMANDS.contains(cmd)) {
                     continue;
                 }
+                // Bare `/` shows the curated Browser Use palette; everything
+                // else still matches once a prefix is typed.
+                match command {
+                    CommandItem::Builtin(cmd) if !cmd.featured_in_empty_popup() => continue,
+                    CommandItem::ServiceTier(_) => continue,
+                    _ => {}
+                }
                 out.push((command.clone(), None));
             }
             return out;
@@ -443,9 +450,10 @@ mod tests {
 
         popup.on_composer_text_change("/st".to_string());
 
+        // /status is surfaced as /context in this fork, so "st" first matches /statusline.
         assert_eq!(
             popup.selected_item(),
-            Some(CommandItem::Builtin(SlashCommand::Status))
+            Some(CommandItem::Builtin(SlashCommand::Statusline))
         );
         assert_eq!(popup.state.scroll_top, 0);
         let width = 72;

@@ -443,9 +443,9 @@ async fn plan_mode_reasoning_override_is_marked_current_in_reasoning_popup() {
     chat.open_reasoning_popup(preset);
 
     let popup = render_bottom_popup(&chat, /*width*/ 100);
-    assert!(popup.contains("Low (current)"));
+    assert!(popup.contains("Low *"));
     assert!(
-        !popup.contains("High (current)"),
+        !popup.contains("High *"),
         "expected Plan override to drive current reasoning label, got: {popup}"
     );
 }

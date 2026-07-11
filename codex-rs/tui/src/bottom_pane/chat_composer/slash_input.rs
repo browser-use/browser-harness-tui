@@ -610,12 +610,12 @@ mod tests {
         let draft = "view the diff";
         let expected_text = "/review view the diff";
 
-        let mut composer = composer_with_draft_tail("/re", draft);
+        let mut composer = composer_with_draft_tail("/rev", draft);
         assert_eq!(press(&mut composer, KeyCode::Tab), InputResult::None);
         assert_eq!(composer.draft.textarea.text(), expected_text);
         assert_eq!(composer.draft.textarea.cursor(), expected_text.len());
 
-        let mut composer = composer_with_draft_tail("/re", draft);
+        let mut composer = composer_with_draft_tail("/rev", draft);
         assert_eq!(
             press(&mut composer, KeyCode::Enter),
             InputResult::CommandWithArgs(SlashCommand::Review, draft.to_string(), Vec::new())
@@ -637,11 +637,11 @@ mod tests {
 
     #[test]
     fn slash_completion_does_not_turn_command_suffix_into_args() {
-        let mut composer = composer_with_text_at_cursor("/review", "/re".len());
+        let mut composer = composer_with_text_at_cursor("/review", "/rev".len());
         assert_eq!(press(&mut composer, KeyCode::Tab), InputResult::None);
         assert_eq!(composer.draft.textarea.text(), "/review ");
 
-        let mut composer = composer_with_text_at_cursor("/review", "/re".len());
+        let mut composer = composer_with_text_at_cursor("/review", "/rev".len());
         assert_eq!(
             press(&mut composer, KeyCode::Enter),
             InputResult::Command(SlashCommand::Review)

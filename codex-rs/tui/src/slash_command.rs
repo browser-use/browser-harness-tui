@@ -286,13 +286,14 @@ impl SlashCommand {
 pub fn built_in_slash_commands() -> Vec<(&'static str, SlashCommand)> {
     SlashCommand::iter()
         .filter(|command| command.is_visible())
-        .filter(|command| command.is_browser_harness_command())
         .map(|c| (c.command(), c))
         .collect()
 }
 
 impl SlashCommand {
-    fn is_browser_harness_command(self) -> bool {
+    /// The curated Browser Use Terminal palette shown for a bare `/`. Every
+    /// other command stays dispatchable and surfaces once its prefix is typed.
+    pub(crate) fn featured_in_empty_popup(self) -> bool {
         matches!(
             self,
             SlashCommand::New
@@ -305,10 +306,6 @@ impl SlashCommand {
                 | SlashCommand::Model
                 | SlashCommand::Goal
                 | SlashCommand::Feedback
-                | SlashCommand::Auth
-                | SlashCommand::Reload
-                | SlashCommand::Update
-                | SlashCommand::Exit
         )
     }
 }

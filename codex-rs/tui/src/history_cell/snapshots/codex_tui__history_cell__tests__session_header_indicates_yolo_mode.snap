@@ -1,11 +1,24 @@
 ---
-source: tui/src/history_cell.rs
+source: tui/src/history_cell/tests.rs
 expression: rendered
 ---
-╭───────────────────────────────────────╮
-│ >_ OpenAI Codex (vtest)               │
-│                                       │
-│ model:       gpt-5   /model to change │
-│ directory:   /tmp/project             │
-│ permissions: YOLO mode                │
-╰───────────────────────────────────────╯
+╭───────────────────────────────────────────╮
+│                  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   │
+│                  ⠀⠀⠀⠀⠀⣠⡶⠶⠶⣦⣄⣠⣴⠶⠶⢶⣄⠀⠀⠀⠀⠀   │
+│                  ⠀⠀⠀⠀⠀⣿⠁⠀⢠⣴⠟⠻⣦⡄⠀⠈⣿⠀⠀⠀⠀⠀   │
+│                  ⠀⠀⠀⠀⠀⢿⣄⣴⠟⠁⠀⠀⠈⠻⣦⣠⡿⠀⠀⠀⠀⠀   │
+│                  ⠀⠀⠀⠀⠀⢈⣿⡇⠀⠀⠀⠀⠀⠀⢸⣿⡁⠀⠀⠀⠀⠀   │
+│                  ⠀⠀⠀⠀⠀⣾⠋⠻⣦⡀⠀⠀⢀⣴⠟⠙⣷⠀⠀⠀⠀⠀   │
+│                  ⠀⠀⠀⠀⠀⣿⡀⠀⠘⠻⣦⣴⠟⠃⠀⢀⣿⠀⠀⠀⠀⠀   │
+│                  ⠀⠀⠀⠀⠀⠙⠷⠶⠶⠟⠋⠙⠻⠶⠶⠾⠋⠀⠀⠀⠀⠀   │
+│                  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   │
+│                                           │
+│                       Browser Use         │
+│               Browser Harness Agent vtest │
+│                                           │
+│                  press / for shortcuts    │
+│                                           │
+│ model:       gpt-5   /model to change     │
+│ directory:   /tmp/project                 │
+│ permissions: YOLO mode                    │
+╰───────────────────────────────────────────╯

@@ -20,7 +20,6 @@ pub(crate) struct ServiceTierCommand {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum SlashCommandItem {
     Builtin(SlashCommand),
-    #[allow(dead_code)]
     ServiceTier(ServiceTierCommand),
 }
 
@@ -86,11 +85,20 @@ pub(crate) fn builtins_for_input(flags: BuiltinCommandFlags) -> Vec<(&'static st
 
 pub(crate) fn commands_for_input(
     flags: BuiltinCommandFlags,
-    _service_tier_commands: &[ServiceTierCommand],
+    service_tier_commands: &[ServiceTierCommand],
 ) -> Vec<SlashCommandItem> {
     let mut commands = Vec::new();
+    let tiers_enabled = flags.service_tier_commands_enabled;
     for (_, cmd) in builtins_for_input(flags) {
         commands.push(SlashCommandItem::Builtin(cmd));
+        if cmd == SlashCommand::Model && tiers_enabled {
+            commands.extend(
+                service_tier_commands
+                    .iter()
+                    .cloned()
+                    .map(SlashCommandItem::ServiceTier),
+            );
+        }
     }
     commands
         .into_iter()
@@ -116,12 +124,22 @@ pub(crate) fn find_builtin_command(name: &str, flags: BuiltinCommandFlags) -> Op
 pub(crate) fn find_slash_command(
     name: &str,
     flags: BuiltinCommandFlags,
-    _service_tier_commands: &[ServiceTierCommand],
+    service_tier_commands: &[ServiceTierCommand],
 ) -> Option<SlashCommandItem> {
     if let Some(cmd) = find_builtin_command(name, flags) {
         return Some(SlashCommandItem::Builtin(cmd));
     }
-    None
+
+    let tiers_enabled = flags.service_tier_commands_enabled;
+    tiers_enabled
+        .then(|| {
+            service_tier_commands
+                .iter()
+                .find(|command| command.name == name)
+                .cloned()
+                .map(SlashCommandItem::ServiceTier)
+        })
+        .flatten()
 }
 
 pub(crate) fn has_slash_command_prefix(
@@ -273,12 +291,12 @@ mod tests {
         assert_eq!(
             commands,
             vec![
-                SlashCommand::Ide,
+                SlashCommand::Status,
+                SlashCommand::Feedback,
                 SlashCommand::Copy,
                 SlashCommand::Raw,
                 SlashCommand::Diff,
                 SlashCommand::Mention,
-                SlashCommand::Status,
             ]
         );
     }

@@ -350,7 +350,7 @@ async fn assert_cancelled_queued_menu_drains_next_input(command: &str, expected_
 
 #[tokio::test]
 async fn queued_slash_menu_cancel_drains_next_input() {
-    assert_cancelled_queued_menu_drains_next_input("/model", "Select Model").await;
+    assert_cancelled_queued_menu_drains_next_input("/model", "Access other models").await;
     assert_cancelled_queued_menu_drains_next_input("/permissions", "Update Model Permissions")
         .await;
 }
@@ -1575,7 +1575,7 @@ async fn queued_menu_slash_keeps_agent_turn_complete_notification() {
         chat.pending_notification,
         Some(Notification::AgentTurnComplete { ref response }) if response == "Done"
     );
-    assert!(render_bottom_popup(&chat, /*width*/ 80).contains("Select Model"));
+    assert!(render_bottom_popup(&chat, /*width*/ 80).contains("Access other models"));
     assert_matches!(op_rx.try_recv(), Err(TryRecvError::Empty));
 }
 

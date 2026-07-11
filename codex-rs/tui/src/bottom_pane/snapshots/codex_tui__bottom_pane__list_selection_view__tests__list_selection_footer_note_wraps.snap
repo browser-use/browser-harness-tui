@@ -5,8 +5,7 @@ expression: "render_lines_with_width(&view, 40)"
                                         
   Select Approval Mode                  
                                         
-› 1. Read Only (current)  Codex can     
-                          read files    
+› 1. Read Only *  Codex can read files  
                                         
   Note: Use /setup-default-sandbox to   
   allow network access.                 
