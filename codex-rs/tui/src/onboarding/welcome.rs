@@ -5,6 +5,7 @@ use ratatui::layout::Rect;
 use ratatui::prelude::Widget;
 use ratatui::style::Stylize;
 use ratatui::text::Line;
+use ratatui::text::Span;
 use ratatui::widgets::Clear;
 use ratatui::widgets::Paragraph;
 use ratatui::widgets::WidgetRef;
@@ -20,8 +21,8 @@ use crate::tui::FrameRequester;
 
 use super::onboarding_screen::StepState;
 
-const MIN_ANIMATION_HEIGHT: u16 = 37;
-const MIN_ANIMATION_WIDTH: u16 = 60;
+const MIN_ANIMATION_HEIGHT: u16 = 14;
+const MIN_ANIMATION_WIDTH: u16 = 30;
 
 pub(crate) struct WelcomeWidget {
     pub is_logged_in: bool,
@@ -87,15 +88,17 @@ impl WidgetRef for &WelcomeWidget {
 
         let mut lines: Vec<Line> = Vec::new();
         if show_animation {
-            let frame = self.animation.current_frame();
-            lines.extend(frame.lines().map(Into::into));
+            // Browser Use orbit-mark instead of the upstream ASCII animation.
+            for row in crate::bu_logo::render_logo_lines() {
+                lines.push(Line::from(Span::styled(row, crate::theme::accent())));
+            }
             lines.push("".into());
         }
         lines.push(Line::from(vec![
             "  ".into(),
             "Welcome to ".into(),
-            "Codex".bold(),
-            ", OpenAI's command-line coding agent".into(),
+            "Browser Use".bold(),
+            ", the command-line browser agent".into(),
         ]));
 
         Paragraph::new(lines)
@@ -145,11 +148,11 @@ mod tests {
         );
         let area = Rect::new(0, 0, MIN_ANIMATION_WIDTH, MIN_ANIMATION_HEIGHT);
         let mut buf = Buffer::empty(area);
-        let frame_lines = widget.animation.current_frame().lines().count() as u16;
+        let logo_lines = crate::bu_logo::LOGO_H as u16;
         (&widget).render(area, &mut buf);
 
         let welcome_row = row_containing(&buf, "Welcome");
-        assert_eq!(welcome_row, Some(frame_lines + 1));
+        assert_eq!(welcome_row, Some(logo_lines + 1));
     }
 
     #[test]

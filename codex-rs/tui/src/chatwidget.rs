@@ -1996,22 +1996,15 @@ impl Drop for ChatWidget {
     }
 }
 
-const PLACEHOLDERS: [&str; 8] = [
-    "Open a site and complete a task",
-    "Find the requested information in the browser",
-    "Use the browser to fill out this workflow",
-    "Check the current page and summarize what changed",
-    "Debug why this browser task failed",
-    "Save the result under agent_outputs/",
-    "Start a new task with /task",
-    "Inspect context with /context",
+// Example tasks shown in the empty composer, mirroring the Browser Use
+// Terminal home-screen examples.
+const PLACEHOLDERS: [&str; 3] = [
+    "get the star count of browser-use/browser-use",
+    "find the top Hacker News post and its points",
+    "what's the weather in Tokyo right now?",
 ];
 
-const SIDE_PLACEHOLDERS: [&str; 3] = [
-    "Check the current browser state",
-    "Summarize the last browser action",
-    "What should the next browser step be?",
-];
+const SIDE_PLACEHOLDERS: [&str; 1] = ["Ask a follow-up..."];
 
 // Extract the first bold (Markdown) element in the form **...** from `s`.
 // Returns the inner text if found; otherwise `None`.

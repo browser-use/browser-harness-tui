@@ -252,7 +252,9 @@ impl Renderable for StatusIndicatorWidget {
         let pretty_elapsed = fmt_elapsed_compact(elapsed_duration.as_secs());
         let motion_mode = MotionMode::from_animations_enabled(self.animations_enabled);
 
-        let mut spans = Vec::with_capacity(5);
+        // Browser Use Terminal live status: `• Working...` with a shimmer sweep.
+        let mut spans = Vec::with_capacity(6);
+        spans.push(Span::styled("• ", crate::theme::dim()));
         if let Some(indicator) = activity_indicator(
             Some(self.last_resume_at),
             motion_mode,
@@ -261,7 +263,12 @@ impl Renderable for StatusIndicatorWidget {
             spans.push(indicator);
             spans.push(" ".into());
         }
-        spans.extend(shimmer_text(&self.header, motion_mode));
+        let header = if self.header.ends_with('…') || self.header.ends_with("...") {
+            self.header.clone()
+        } else {
+            format!("{}...", self.header)
+        };
+        spans.extend(shimmer_text(&header, motion_mode));
         if !spans.is_empty() {
             spans.push(" ".into());
         }

@@ -332,13 +332,46 @@ impl HistoryCell for SessionHeaderHistoryCell {
 
         let make_row = |spans: Vec<Span<'static>>| Line::from(spans);
 
-        // Title line rendered inside the box: ">_ Browser Harness Agent (vX)"
-        let title_spans: Vec<Span<'static>> = vec![
-            Span::from(">_ ").dim(),
-            Span::from("Browser Harness Agent").bold(),
-            Span::from(" ").dim(),
-            Span::from(format!("(v{})", self.version)).dim(),
-        ];
+        // Browser Use Terminal splash: centered braille orbit-mark logo, the
+        // product name, version, and the shortcuts hint.
+        let center_pad = |content_width: usize| {
+            " ".repeat(inner_width.saturating_sub(content_width) / 2)
+        };
+        let mut splash: Vec<Line<'static>> = Vec::new();
+        if inner_width >= crate::bu_logo::LOGO_W {
+            let logo_pad = center_pad(crate::bu_logo::LOGO_W);
+            for row in crate::bu_logo::render_logo_lines() {
+                splash.push(Line::from(vec![
+                    Span::from(logo_pad.clone()),
+                    Span::styled(row, crate::theme::accent()),
+                ]));
+            }
+            splash.push(Line::from(""));
+        }
+        const TITLE: &str = "Browser Use";
+        splash.push(Line::from(vec![
+            Span::from(center_pad(TITLE.chars().count())),
+            Span::from(TITLE).bold(),
+        ]));
+        let version_label = format!("Browser Harness Agent v{}", self.version);
+        splash.push(Line::from(vec![
+            Span::from(center_pad(version_label.chars().count())),
+            Span::styled(version_label, crate::theme::muted()),
+        ]));
+        splash.push(Line::from(""));
+        const HINT_PREFIX: &str = "press ";
+        const HINT_KEY: &str = "/";
+        const HINT_SUFFIX: &str = " for shortcuts";
+        splash.push(Line::from(vec![
+            Span::from(center_pad(
+                HINT_PREFIX.chars().count()
+                    + HINT_KEY.chars().count()
+                    + HINT_SUFFIX.chars().count(),
+            )),
+            Span::styled(HINT_PREFIX, crate::theme::muted()),
+            Span::from(HINT_KEY).bold(),
+            Span::styled(HINT_SUFFIX, crate::theme::muted()),
+        ]));
 
         const CHANGE_MODEL_HINT_COMMAND: &str = "/model";
         const CHANGE_MODEL_HINT_EXPLANATION: &str = " to change";
@@ -382,12 +415,10 @@ impl HistoryCell for SessionHeaderHistoryCell {
         let dir = self.format_directory(Some(dir_max_width));
         let dir_spans = vec![Span::from(dir_prefix).dim(), Span::from(dir)];
 
-        let mut lines = vec![
-            make_row(title_spans),
-            make_row(Vec::new()),
-            make_row(model_spans),
-            make_row(dir_spans),
-        ];
+        let mut lines = splash;
+        lines.push(make_row(Vec::new()));
+        lines.push(make_row(model_spans));
+        lines.push(make_row(dir_spans));
 
         if self.yolo_mode {
             let permissions_label = format!("{PERMISSIONS_LABEL:<label_width$}");

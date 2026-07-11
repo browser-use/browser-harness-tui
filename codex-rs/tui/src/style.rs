@@ -10,7 +10,6 @@ use ratatui::style::Color;
 use ratatui::style::Style;
 use ratatui::style::Stylize;
 
-const LIGHT_BG_ACCENT_RGB: (u8, u8, u8) = (0, 95, 135);
 // Decorative table rules should remain visible without competing with cell content.
 const TABLE_SEPARATOR_FG_ALPHA: f32 = 0.20;
 
@@ -48,12 +47,11 @@ pub fn proposed_plan_style_for(terminal_bg: Option<(u8, u8, u8)>) -> Style {
 }
 
 /// Returns the shared accent style for the provided terminal background.
+/// Catppuccin blue from the Browser Use theme (Mocha on dark, Latte on light).
 pub(crate) fn accent_style_for(terminal_bg: Option<(u8, u8, u8)>) -> Style {
-    if terminal_bg.is_some_and(is_light) {
-        Style::default().fg(best_color(LIGHT_BG_ACCENT_RGB)).bold()
-    } else {
-        Style::default().fg(Color::Cyan).bold()
-    }
+    Style::default()
+        .fg(best_color(crate::theme::palette_for(terminal_bg).accent))
+        .bold()
 }
 
 fn table_separator_style_for(
@@ -74,12 +72,21 @@ fn table_separator_style_for(
 
 #[allow(clippy::disallowed_methods)]
 pub fn user_message_bg(terminal_bg: (u8, u8, u8)) -> Color {
-    let (top, alpha) = if is_light(terminal_bg) {
-        ((0, 0, 0), 0.04)
+    // Catppuccin surface color from the Browser Use theme, so user prompts and
+    // menu surfaces match the Browser Use Terminal exactly on themed terminals.
+    // On unthemed backgrounds a blend keeps contrast with the actual bg.
+    let palette = crate::theme::palette_for(Some(terminal_bg));
+    let surface = palette.user_prompt_background;
+    if surface != terminal_bg {
+        best_color(surface)
     } else {
-        ((255, 255, 255), 0.12)
-    };
-    best_color(blend(top, terminal_bg, alpha))
+        let (top, alpha) = if is_light(terminal_bg) {
+            ((0, 0, 0), 0.04)
+        } else {
+            ((255, 255, 255), 0.12)
+        };
+        best_color(blend(top, terminal_bg, alpha))
+    }
 }
 
 #[allow(clippy::disallowed_methods)]
@@ -94,16 +101,21 @@ mod tests {
     use ratatui::style::Modifier;
 
     #[test]
-    fn accent_style_uses_darker_cyan_on_light_backgrounds() {
+    fn accent_style_uses_latte_blue_on_light_backgrounds() {
         let style = accent_style_for(Some((255, 255, 255)));
 
-        assert_eq!(style.fg, Some(best_color(LIGHT_BG_ACCENT_RGB)));
+        assert_eq!(
+            style.fg,
+            Some(best_color(crate::theme::Palette::latte().accent))
+        );
         assert!(style.add_modifier.contains(Modifier::BOLD));
     }
 
     #[test]
-    fn accent_style_uses_cyan_on_dark_or_unknown_backgrounds() {
-        let expected = Style::default().fg(Color::Cyan).bold();
+    fn accent_style_uses_mocha_blue_on_dark_or_unknown_backgrounds() {
+        let expected = Style::default()
+            .fg(best_color(crate::theme::Palette::mocha().accent))
+            .bold();
 
         assert_eq!(accent_style_for(Some((0, 0, 0))), expected);
         assert_eq!(accent_style_for(/*terminal_bg*/ None), expected);

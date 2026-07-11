@@ -151,6 +151,7 @@ use ratatui::style::Stylize;
 use ratatui::text::Line;
 use ratatui::text::Span;
 use ratatui::widgets::Block;
+use ratatui::widgets::BorderType;
 use ratatui::widgets::Paragraph;
 use ratatui::widgets::StatefulWidgetRef;
 use ratatui::widgets::WidgetRef;
@@ -205,7 +206,6 @@ use crate::render::Insets;
 use crate::render::RectExt;
 use crate::render::renderable::Renderable;
 use crate::slash_command::SlashCommand;
-use crate::style::user_message_style;
 use codex_protocol::ThreadId;
 use codex_protocol::user_input::ByteRange;
 use codex_protocol::user_input::MAX_USER_INPUT_TEXT_CHARS;
@@ -754,11 +754,13 @@ impl ChatComposer {
         };
         let [composer_rect, popup_rect] =
             Layout::vertical([Constraint::Min(3), popup_constraint]).areas(area);
+        // Rounded border + margin flank the prompt gutter (Browser Use Terminal
+        // look): `│ > text │`. Top/bottom border rows reuse the existing padding.
         let mut textarea_rect = composer_rect.inset(Insets::tlbr(
             /*top*/ 1,
-            LIVE_PREFIX_COLS,
+            LIVE_PREFIX_COLS + 2,
             /*bottom*/ 1,
-            /*right*/ 1u16.saturating_add(textarea_right_reserve),
+            /*right*/ 2u16.saturating_add(textarea_right_reserve),
         ));
         let remote_images_height = self
             .attachments
@@ -4103,7 +4105,8 @@ impl ChatComposer {
             .unwrap_or_else(|| footer_height(&footer_props));
         let footer_spacing = Self::footer_spacing(footer_hint_height);
         let footer_total_height = footer_hint_height + footer_spacing;
-        const COLS_WITH_MARGIN: u16 = LIVE_PREFIX_COLS + 1;
+        // Prompt gutter + border columns and margins on both sides (see layout_areas).
+        const COLS_WITH_MARGIN: u16 = LIVE_PREFIX_COLS + 4;
         let inner_width =
             width.saturating_sub(COLS_WITH_MARGIN.saturating_add(textarea_right_reserve));
         let remote_images_height: u16 = self
@@ -4385,22 +4388,41 @@ impl ChatComposer {
                 }
             }
         }
-        let style = user_message_style();
-        Block::default().style(style).render_ref(composer_rect, buf);
+        // Browser Use Terminal composer: a rounded box with the active browser
+        // backend's name punched into the bottom border.
+        let browser_label = std::env::var("BH_BROWSER_LABEL")
+            .ok()
+            .filter(|label| !label.trim().is_empty())
+            .unwrap_or_else(|| "browser".to_string());
+        let mut composer_block = Block::bordered()
+            .border_type(BorderType::Rounded)
+            .border_style(crate::theme::border());
+        if composer_rect.width > browser_label.chars().count() as u16 + 8 {
+            composer_block = composer_block.title_bottom(
+                Line::from(vec![
+                    Span::styled("─ ", crate::theme::border()),
+                    Span::styled(browser_label, crate::theme::text()),
+                    Span::styled(" ─", crate::theme::border()),
+                ])
+                .right_aligned(),
+            );
+        }
+        composer_block.render_ref(composer_rect, buf);
         if !remote_images_rect.is_empty() {
-            Paragraph::new(self.attachments.remote_image_lines())
-                .style(style)
-                .render_ref(remote_images_rect, buf);
+            Paragraph::new(self.attachments.remote_image_lines()).render_ref(remote_images_rect, buf);
         }
         if !textarea_rect.is_empty() {
+            let composer_is_empty = self.draft.textarea.text().is_empty() && !self.draft.is_bash_mode;
             let prompt = if self.draft.input_enabled {
                 if self.draft.is_bash_mode {
                     Span::from("!").light_red().bold()
+                } else if composer_is_empty {
+                    Span::styled(">", crate::theme::dim())
                 } else {
-                    "›".bold()
+                    Span::styled(">", crate::theme::accent())
                 }
             } else {
-                "›".dim()
+                Span::styled(">", crate::theme::dim())
             };
             buf.set_span(
                 textarea_rect.x - LIVE_PREFIX_COLS,
