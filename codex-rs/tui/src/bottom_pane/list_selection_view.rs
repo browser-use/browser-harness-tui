@@ -503,8 +503,9 @@ impl ListSelectionView {
                     let is_selected = self.state.selected_idx == Some(visible_idx);
                     let prefix = if is_selected { '›' } else { ' ' };
                     let name = item.name.as_str();
+                    // `*` marks the choice currently in use (Browser Use Terminal style).
                     let marker = if item.is_current {
-                        " (current)"
+                        " *"
                     } else if item.is_default {
                         " (default)"
                     } else {

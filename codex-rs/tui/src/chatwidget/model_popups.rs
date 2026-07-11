@@ -143,8 +143,8 @@ impl ChatWidget {
         }
 
         let header = self.model_menu_header(
-            "Select Model",
-            "Pick a quick auto mode or browse all models.",
+            "Model",
+            "Choose the model and provider for this session",
         );
         self.bottom_pane.show_selection_view(SelectionViewParams {
             footer_hint: Some(standard_popup_hint_line()),
@@ -202,8 +202,8 @@ impl ChatWidget {
         }
 
         let header = self.model_menu_header(
-            "Select Model and Effort",
-            "Access legacy models by running codex -m <model_name> or in your config.toml",
+            "Model",
+            "Access other models with browser-harness tui --model <model_name> or in your config.toml",
         );
         self.bottom_pane.show_selection_view(SelectionViewParams {
             footer_hint: Some(self.bottom_pane.standard_popup_hint_line()),
