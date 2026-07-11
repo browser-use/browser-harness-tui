@@ -609,6 +609,7 @@ async fn session_info_uses_availability_nux_tooltip_override() {
         Some("Model just became available".to_string()),
         Some(PlanType::Free),
         /*show_fast_status*/ false,
+        /*frame_requester*/ None,
     );
 
     let rendered = render_transcript(&cell).join("\n");
@@ -631,6 +632,7 @@ async fn session_info_availability_nux_tooltip_snapshot() {
         Some("Model just became available".to_string()),
         Some(PlanType::Free),
         /*show_fast_status*/ false,
+        /*frame_requester*/ None,
     );
 
     let rendered = render_transcript(&cell).join("\n");
@@ -648,6 +650,7 @@ async fn session_info_first_event_suppresses_tooltips_and_nux() {
         Some("Model just became available".to_string()),
         Some(PlanType::Free),
         /*show_fast_status*/ false,
+        /*frame_requester*/ None,
     );
 
     let rendered = render_transcript(&cell).join("\n");
@@ -667,6 +670,7 @@ async fn session_info_hides_tooltips_when_disabled() {
         Some("Model just became available".to_string()),
         Some(PlanType::Free),
         /*show_fast_status*/ false,
+        /*frame_requester*/ None,
     );
 
     let rendered = render_transcript(&cell).join("\n");

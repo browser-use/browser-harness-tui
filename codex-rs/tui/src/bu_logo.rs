@@ -15,6 +15,11 @@ const LOGO_STROKE: f32 = 1.15;
 type M3 = [[f32; 3]; 3];
 type V3 = [f32; 3];
 
+fn rot_x(a: f32) -> M3 {
+    let (c, s) = (a.cos(), a.sin());
+    [[1.0, 0.0, 0.0], [0.0, c, -s], [0.0, s, c]]
+}
+
 fn rot_y(a: f32) -> M3 {
     let (c, s) = (a.cos(), a.sin());
     [[c, 0.0, s], [0.0, 1.0, 0.0], [-s, 0.0, c]]
@@ -57,10 +62,17 @@ fn ring_points(base: &M3, radius: f32, y_squash: f32) -> Vec<V3> {
 
 const BRAILLE_BITS: [[u32; 2]; 4] = [[1, 8], [2, 16], [4, 32], [64, 128]];
 
-/// Render the BU orbit-mark as braille-encoded strings, one per cell row.
+/// Render the BU orbit-mark at the canonical resting orientation.
 pub(crate) fn render_logo_lines() -> Vec<String> {
-    let base_a = mul(&rot_z(ROLL), &rot_y(TILT));
-    let base_b = mul(&rot_z(-ROLL), &rot_y(TILT));
+    render_logo_lines_at(0.0, 0.0)
+}
+
+/// Render the BU orbit-mark with a global rotation applied — used for the
+/// gentle y-axis drift animation ported from the Browser Use Terminal.
+pub(crate) fn render_logo_lines_at(rx: f32, ry: f32) -> Vec<String> {
+    let global = mul(&rot_y(ry), &rot_x(rx));
+    let base_a = mul(&global, &mul(&rot_z(ROLL), &rot_y(TILT)));
+    let base_b = mul(&global, &mul(&rot_z(-ROLL), &rot_y(TILT)));
     let sub_x = 2usize;
     let sub_y = 4usize;
     let sx = LOGO_W * sub_x;

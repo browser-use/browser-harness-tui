@@ -119,6 +119,9 @@ impl ChatWidget {
                 startup_tooltip_override,
                 self.plan_type,
                 show_fast_status,
+                self.config
+                    .animations
+                    .then(|| self.frame_requester.clone()),
             );
             self.apply_session_info_cell(session_info_cell);
         } else if self

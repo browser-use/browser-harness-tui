@@ -99,6 +99,13 @@ impl CompositeHistoryCell {
 }
 
 impl HistoryCell for CompositeHistoryCell {
+    fn transcript_animation_tick(&self) -> Option<u64> {
+        self.parts
+            .iter()
+            .filter_map(|part| part.transcript_animation_tick())
+            .max()
+    }
+
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
         let mut out: Vec<Line<'static>> = Vec::new();
         let mut first = true;

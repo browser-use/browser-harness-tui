@@ -2,7 +2,9 @@
 
 use super::*;
 
-pub(crate) const SESSION_HEADER_MAX_INNER_WIDTH: usize = 56; // Just an eyeballed value
+// Track the full terminal width so the splash card grows with the window,
+// like the Browser Use Terminal welcome surface.
+pub(crate) const SESSION_HEADER_MAX_INNER_WIDTH: usize = usize::MAX;
 
 pub(crate) fn card_inner_width(width: u16, max_inner_width: usize) -> Option<usize> {
     if width < 4 {
@@ -135,6 +137,10 @@ impl HistoryCell for SessionInfoCell {
     fn raw_lines(&self) -> Vec<Line<'static>> {
         self.0.raw_lines()
     }
+
+    fn transcript_animation_tick(&self) -> Option<u64> {
+        self.0.transcript_animation_tick()
+    }
 }
 
 pub(crate) fn new_session_info(
@@ -145,9 +151,10 @@ pub(crate) fn new_session_info(
     tooltip_override: Option<String>,
     auth_plan: Option<PlanType>,
     show_fast_status: bool,
+    frame_requester: Option<crate::tui::FrameRequester>,
 ) -> SessionInfoCell {
     // Header box rendered as history (so it appears at the very top)
-    let header = SessionHeaderHistoryCell::new(
+    let mut header = SessionHeaderHistoryCell::new(
         session.model.clone(),
         session.reasoning_effort.clone(),
         show_fast_status,
@@ -158,6 +165,9 @@ pub(crate) fn new_session_info(
         session.approval_policy,
         &session.permission_profile,
     ));
+    if let Some(frame_requester) = frame_requester {
+        header = header.with_animation(frame_requester);
+    }
     let mut parts: Vec<Box<dyn HistoryCell>> = vec![Box::new(header)];
 
     if is_first_event {
@@ -246,6 +256,8 @@ pub(crate) struct SessionHeaderHistoryCell {
     show_fast_status: bool,
     directory: PathBuf,
     yolo_mode: bool,
+    /// Drives the orbit-mark drift animation; `None` renders it static.
+    animation: Option<(std::time::Instant, crate::tui::FrameRequester)>,
 }
 
 impl SessionHeaderHistoryCell {
@@ -266,6 +278,12 @@ impl SessionHeaderHistoryCell {
         )
     }
 
+    /// Enable the gentle y-axis drift animation (Browser Use Terminal look).
+    pub(crate) fn with_animation(mut self, frame_requester: crate::tui::FrameRequester) -> Self {
+        self.animation = Some((std::time::Instant::now(), frame_requester));
+        self
+    }
+
     pub(crate) fn new_with_style(
         model: String,
         model_style: Style,
@@ -282,6 +300,7 @@ impl SessionHeaderHistoryCell {
             show_fast_status,
             directory,
             yolo_mode: false,
+            animation: None,
         }
     }
 
@@ -325,6 +344,12 @@ impl SessionHeaderHistoryCell {
 }
 
 impl HistoryCell for SessionHeaderHistoryCell {
+    fn transcript_animation_tick(&self) -> Option<u64> {
+        self.animation
+            .as_ref()
+            .map(|(started, _)| started.elapsed().as_millis() as u64 / 70)
+    }
+
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
         let Some(inner_width) = card_inner_width(width, SESSION_HEADER_MAX_INNER_WIDTH) else {
             return Vec::new();
@@ -340,7 +365,17 @@ impl HistoryCell for SessionHeaderHistoryCell {
         let mut splash: Vec<Line<'static>> = Vec::new();
         if inner_width >= crate::bu_logo::LOGO_W {
             let logo_pad = center_pad(crate::bu_logo::LOGO_W);
-            for row in crate::bu_logo::render_logo_lines() {
+            // Gentle y-axis drift at ~14fps, matching the Browser Use Terminal
+            // welcome animation (0.4 rad/s). Static under tests for
+            // deterministic snapshots.
+            let logo_rows = match &self.animation {
+                Some((started, frame_requester)) if !cfg!(test) => {
+                    frame_requester.schedule_frame_in(std::time::Duration::from_millis(70));
+                    crate::bu_logo::render_logo_lines_at(0.0, started.elapsed().as_secs_f32() * 0.4)
+                }
+                _ => crate::bu_logo::render_logo_lines(),
+            };
+            for row in logo_rows {
                 splash.push(Line::from(vec![
                     Span::from(logo_pad.clone()),
                     Span::styled(row, crate::theme::accent()),
@@ -428,7 +463,7 @@ impl HistoryCell for SessionHeaderHistoryCell {
             ]));
         }
 
-        with_border(lines)
+        with_border_with_inner_width(lines, inner_width)
     }
 
     fn raw_lines(&self) -> Vec<Line<'static>> {
