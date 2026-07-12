@@ -2,22 +2,6 @@
 
 use super::*;
 
-// Track the full terminal width so the splash card grows with the window,
-// like the Browser Use Terminal welcome surface.
-pub(crate) const SESSION_HEADER_MAX_INNER_WIDTH: usize = usize::MAX;
-
-pub(crate) fn card_inner_width(width: u16, max_inner_width: usize) -> Option<usize> {
-    if width < 4 {
-        return None;
-    }
-    let inner_width = std::cmp::min(width.saturating_sub(4) as usize, max_inner_width);
-    Some(inner_width)
-}
-
-/// Render `lines` inside a border sized to the widest span in the content.
-pub(crate) fn with_border(lines: Vec<Line<'static>>) -> Vec<Line<'static>> {
-    with_border_internal(lines, /*forced_inner_width*/ None)
-}
 
 /// Render `lines` inside a border whose inner width is at least `inner_width`.
 ///
@@ -321,6 +305,22 @@ impl SessionHeaderHistoryCell {
         }
     }
 
+    /// Advance the logo physics one frame. Driven every frame from
+    /// `ChatWidget::pre_draw_tick` so the logo keeps spinning even while a
+    /// popup/modal is open or the header is momentarily off-screen. Returns
+    /// true when this header is animated.
+    pub(crate) fn tick_animation(&self) -> bool {
+        match &self.animation {
+            Some((anim, _)) => {
+                if let Ok(mut anim) = anim.lock() {
+                    anim.tick();
+                }
+                true
+            }
+            None => false,
+        }
+    }
+
     /// Row offset of the logo block within the cell's display lines (top border
     /// = row 0). `None` until the cell has rendered at least once.
     pub(crate) fn logo_top_row(&self) -> Option<u16> {
@@ -407,131 +407,69 @@ impl HistoryCell for SessionHeaderHistoryCell {
     }
 
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
-        let Some(inner_width) = card_inner_width(width, SESSION_HEADER_MAX_INNER_WIDTH) else {
+        let inner_width = width as usize;
+        if inner_width < crate::bu_logo::LOGO_W {
             return Vec::new();
-        };
+        }
 
-        let make_row = |spans: Vec<Span<'static>>| Line::from(spans);
-
-        // Browser Use Terminal splash: centered braille orbit-mark logo, the
-        // product name, version, and the shortcuts hint.
+        // Clean, borderless Browser Use welcome: centered animated orbit-mark,
+        // the product name, and the shortcuts hint. No box, no metadata clutter
+        // (the model lives in the composer status line).
         let center_pad = |content_width: usize| {
             " ".repeat(inner_width.saturating_sub(content_width) / 2)
         };
-        let mut splash: Vec<Line<'static>> = Vec::new();
-        if inner_width >= crate::bu_logo::LOGO_W {
-            let logo_pad = center_pad(crate::bu_logo::LOGO_W);
-            // The logo block starts here. `+1` accounts for the top border row
-            // that `with_border` prepends to these display lines.
-            self.logo_top_row.store(
-                (splash.len() as u32 + 1) + 1,
-                std::sync::atomic::Ordering::Relaxed,
-            );
-            // Gentle y-axis drift, matching Browser Use Terminal. Physics ticks
-            // here so a mouse throw settles over subsequent frames. Static under
-            // tests for deterministic snapshots.
-            let logo_rows = match &self.animation {
-                Some((anim, frame_requester)) if !cfg!(test) => {
-                    frame_requester.schedule_frame_in(std::time::Duration::from_millis(50));
-                    match anim.lock() {
-                        Ok(mut a) => {
-                            a.tick();
-                            a.render()
-                        }
-                        Err(_) => crate::bu_logo::render_logo_lines(),
-                    }
-                }
-                _ => crate::bu_logo::render_logo_lines(),
-            };
-            for row in logo_rows {
-                splash.push(Line::from(vec![
-                    Span::from(logo_pad.clone()),
-                    Span::styled(row, crate::theme::accent()),
-                ]));
-            }
-            splash.push(Line::from(""));
+        let mut lines: Vec<Line<'static>> = Vec::new();
+        lines.push(Line::from(""));
+
+        let logo_pad = center_pad(crate::bu_logo::LOGO_W);
+        // Record where the logo band starts for mouse hit-testing (stored+1;
+        // getter returns value-1). The active cell has a 1-row top inset added
+        // by the transcript renderer, which the mouse handler accounts for.
+        self.logo_top_row.store(
+            lines.len() as u32 + 1,
+            std::sync::atomic::Ordering::Relaxed,
+        );
+        // Render at the current rotation; the physics is advanced from
+        // ChatWidget::pre_draw_tick so it keeps spinning even when a popup or
+        // modal is open. Static under tests for deterministic snapshots.
+        let logo_rows = match &self.animation {
+            Some((anim, _)) if !cfg!(test) => anim
+                .lock()
+                .map(|a| a.render())
+                .unwrap_or_else(|_| crate::bu_logo::render_logo_lines()),
+            _ => crate::bu_logo::render_logo_lines(),
+        };
+        for row in logo_rows {
+            lines.push(Line::from(vec![
+                Span::from(logo_pad.clone()),
+                Span::styled(row, crate::theme::accent()),
+            ]));
         }
+
+        lines.push(Line::from(""));
         const TITLE: &str = "Browser Use";
-        splash.push(Line::from(vec![
+        lines.push(Line::from(vec![
             Span::from(center_pad(TITLE.chars().count())),
-            Span::from(TITLE).bold(),
+            Span::styled(TITLE, crate::theme::accent()),
         ]));
-        let version_label = format!("Browser Harness Agent v{}", self.version);
-        splash.push(Line::from(vec![
-            Span::from(center_pad(version_label.chars().count())),
-            Span::styled(version_label, crate::theme::muted()),
-        ]));
-        splash.push(Line::from(""));
+
+        lines.push(Line::from(""));
         const HINT_PREFIX: &str = "press ";
         const HINT_KEY: &str = "/";
-        const HINT_SUFFIX: &str = " for shortcuts";
-        splash.push(Line::from(vec![
+        const HINT_SUFFIX: &str = " for commands";
+        lines.push(Line::from(vec![
             Span::from(center_pad(
                 HINT_PREFIX.chars().count()
                     + HINT_KEY.chars().count()
                     + HINT_SUFFIX.chars().count(),
             )),
-            Span::styled(HINT_PREFIX, crate::theme::muted()),
-            Span::from(HINT_KEY).bold(),
-            Span::styled(HINT_SUFFIX, crate::theme::muted()),
+            Span::styled(HINT_PREFIX, crate::theme::dim()),
+            Span::styled(HINT_KEY, crate::theme::accent()),
+            Span::styled(HINT_SUFFIX, crate::theme::dim()),
         ]));
+        lines.push(Line::from(""));
 
-        const CHANGE_MODEL_HINT_COMMAND: &str = "/model";
-        const CHANGE_MODEL_HINT_EXPLANATION: &str = " to change";
-        const DIR_LABEL: &str = "directory:";
-        const PERMISSIONS_LABEL: &str = "permissions:";
-        let label_width = if self.yolo_mode {
-            DIR_LABEL.len().max(PERMISSIONS_LABEL.len())
-        } else {
-            DIR_LABEL.len()
-        };
-
-        let model_label = format!(
-            "{model_label:<label_width$}",
-            model_label = "model:",
-            label_width = label_width
-        );
-        let reasoning_label = self.reasoning_label();
-        let model_spans: Vec<Span<'static>> = {
-            let mut spans = vec![
-                Span::from(format!("{model_label} ")).dim(),
-                Span::styled(self.model.clone(), self.model_style),
-            ];
-            if let Some(reasoning) = reasoning_label {
-                spans.push(Span::from(" "));
-                spans.push(Span::from(reasoning.to_owned()));
-            }
-            if self.show_fast_status {
-                spans.push("   ".into());
-                spans.push(Span::styled("fast", self.model_style.magenta()));
-            }
-            spans.push("   ".dim());
-            spans.push(CHANGE_MODEL_HINT_COMMAND.cyan());
-            spans.push(CHANGE_MODEL_HINT_EXPLANATION.dim());
-            spans
-        };
-
-        let dir_label = format!("{DIR_LABEL:<label_width$}");
-        let dir_prefix = format!("{dir_label} ");
-        let dir_prefix_width = UnicodeWidthStr::width(dir_prefix.as_str());
-        let dir_max_width = inner_width.saturating_sub(dir_prefix_width);
-        let dir = self.format_directory(Some(dir_max_width));
-        let dir_spans = vec![Span::from(dir_prefix).dim(), Span::from(dir)];
-
-        let mut lines = splash;
-        lines.push(make_row(Vec::new()));
-        lines.push(make_row(model_spans));
-        lines.push(make_row(dir_spans));
-
-        if self.yolo_mode {
-            let permissions_label = format!("{PERMISSIONS_LABEL:<label_width$}");
-            lines.push(make_row(vec![
-                Span::from(format!("{permissions_label} ")).dim(),
-                "YOLO mode".magenta().bold(),
-            ]));
-        }
-
-        with_border_with_inner_width(lines, inner_width)
+        lines
     }
 
     fn raw_lines(&self) -> Vec<Line<'static>> {

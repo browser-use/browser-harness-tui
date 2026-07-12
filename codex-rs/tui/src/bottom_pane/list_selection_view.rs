@@ -1431,9 +1431,11 @@ impl ListSelectionView {
 impl Renderable for ListSelectionView {
     fn desired_height(&self, width: u16) -> u16 {
         if self.centered_modal {
-            // Report a tall height so the inline viewport expands and the modal
-            // floats centered over the screen, like Browser Use Terminal.
-            return 4000;
+            // Size to the content plus the rounded border, so the modal floats
+            // as a card above the composer with the existing chat still visible
+            // behind/above it (not a full-screen takeover).
+            let box_w = Self::modal_width(width);
+            return self.content_desired_height(box_w).saturating_add(2);
         }
         self.content_desired_height(width)
     }

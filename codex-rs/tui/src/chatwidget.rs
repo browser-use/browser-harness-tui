@@ -1166,6 +1166,17 @@ impl ChatWidget {
         self.update_due_hook_visibility();
         self.schedule_hook_timer_if_needed();
         self.bottom_pane.pre_draw_tick();
+        // Advance the welcome logo every frame and keep re-arming so it spins
+        // continuously — even while a popup/modal is open or the header is
+        // temporarily off-screen (the header's own render can't re-schedule then).
+        let welcome_animating = self
+            .animated_welcome_header()
+            .map(|header| header.tick_animation())
+            .unwrap_or(false);
+        if welcome_animating {
+            self.frame_requester
+                .schedule_frame_in(std::time::Duration::from_millis(50));
+        }
         if let Some(pet) = self.ambient_pet.as_ref() {
             pet.schedule_next_frame();
         }

@@ -1478,7 +1478,9 @@ fn completed_mcp_tool_call_multiple_outputs_inline_snapshot() {
 }
 
 #[test]
-fn session_header_includes_reasoning_level_when_present() {
+fn session_header_renders_clean_welcome_splash() {
+    // The header is a borderless Browser Use welcome: logo + name + hint.
+    // Model / reasoning / fast-status now live in the composer status line.
     let cell = SessionHeaderHistoryCell::new(
         "gpt-4o".to_string(),
         Some(ReasoningEffortConfig::High),
@@ -1487,53 +1489,13 @@ fn session_header_includes_reasoning_level_when_present() {
         "test",
     );
 
-    let lines = render_lines(&cell.display_lines(/*width*/ 80));
-    let model_line = lines
-        .iter()
-        .find(|line| line.contains("model:"))
-        .expect("model line");
-
-    assert!(model_line.contains("gpt-4o high   fast"));
-    assert!(model_line.contains("/model to change"));
-}
-
-#[test]
-fn session_header_hides_fast_status_when_disabled() {
-    let cell = SessionHeaderHistoryCell::new(
-        "gpt-4o".to_string(),
-        Some(ReasoningEffortConfig::High),
-        /*show_fast_status*/ false,
-        std::env::temp_dir(),
-        "test",
-    );
-
-    let lines = render_lines(&cell.display_lines(/*width*/ 80));
-    let model_line = lines
-        .iter()
-        .find(|line| line.contains("model:"))
-        .expect("model line");
-
-    assert!(model_line.contains("gpt-4o high"));
-    assert!(!model_line.contains("fast"));
-}
-
-#[test]
-#[cfg_attr(
-    target_os = "windows",
-    ignore = "snapshot path rendering differs on Windows"
-)]
-fn session_header_indicates_yolo_mode() {
-    let cell = SessionHeaderHistoryCell::new(
-        "gpt-5".to_string(),
-        /*reasoning_effort*/ None,
-        /*show_fast_status*/ false,
-        test_path_buf("/tmp/project").abs().to_path_buf(),
-        "test",
-    )
-    .with_yolo_mode(/*yolo_mode*/ true);
-
     let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
-    insta::assert_snapshot!(rendered);
+    assert!(rendered.contains("Browser Use"));
+    assert!(rendered.contains("press "));
+    assert!(rendered.contains("for commands"));
+    // No boxed metadata rows in the clean welcome.
+    assert!(!rendered.contains("model:"));
+    assert!(!rendered.contains("directory:"));
 }
 
 #[test]
