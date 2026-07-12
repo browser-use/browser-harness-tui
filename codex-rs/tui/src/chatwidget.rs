@@ -1500,6 +1500,25 @@ impl ChatWidget {
             false
         };
 
+        // Browser Use Terminal welcome behaviour: while the session is idle
+        // (no turn started, animations on), keep the header in the live viewport
+        // as the active cell so the BU logo keeps spinning. It commits to
+        // scrollback (and freezes) naturally when the first turn flushes it,
+        // exactly like Terminal's home screen scrolling into history.
+        if self.config.animations && !self.turn_lifecycle.agent_turn_running {
+            if merged_header {
+                // active_cell already holds the header cell; keep it live.
+                self.request_redraw();
+                return;
+            }
+            if let Some(cell) = session_info_cell.take() {
+                self.flush_active_cell();
+                self.transcript.active_cell = Some(cell);
+                self.request_redraw();
+                return;
+            }
+        }
+
         self.flush_active_cell();
 
         if !merged_header && let Some(cell) = session_info_cell {
@@ -1696,6 +1715,61 @@ impl ChatWidget {
 
     pub(crate) fn composer_is_empty(&self) -> bool {
         self.bottom_pane.composer_is_empty()
+    }
+
+    /// The live animated welcome header, when it is the current active cell.
+    fn animated_welcome_header(&self) -> Option<&history_cell::SessionHeaderHistoryCell> {
+        self.transcript
+            .active_cell
+            .as_ref()?
+            .as_any()
+            .downcast_ref::<history_cell::SessionInfoCell>()?
+            .animated_header()
+    }
+
+    /// Whether to capture mouse for the welcome logo — only while the animated
+    /// welcome header is live, the composer is empty, and no popup is up. Mirrors
+    /// Browser Use Terminal's `should_capture_welcome_mouse`.
+    pub(crate) fn welcome_mouse_capture_active(&self) -> bool {
+        self.animated_welcome_header().is_some()
+            && self.composer_is_empty()
+            && !self.bottom_pane.has_active_view()
+    }
+
+    /// Handle a mouse event against the current viewport. Returns true if the
+    /// welcome logo was spun. `viewport` is the on-screen rect the chat widget
+    /// last rendered into.
+    pub(crate) fn handle_mouse_event(
+        &mut self,
+        viewport: Rect,
+        event: crossterm::event::MouseEvent,
+    ) -> bool {
+        use crossterm::event::MouseEventKind;
+        if !matches!(
+            event.kind,
+            MouseEventKind::Down(_) | MouseEventKind::Drag(_)
+        ) {
+            return false;
+        }
+        if !self.welcome_mouse_capture_active() {
+            return false;
+        }
+        let Some(header) = self.animated_welcome_header() else {
+            return false;
+        };
+        let Some(logo_top) = header.logo_top_row() else {
+            return false;
+        };
+        // The active cell renders at the top of the viewport with a 1-row inset
+        // (TranscriptAreaRenderable top:1); the logo band sits `logo_top` rows in.
+        let logo_y0 = viewport.y.saturating_add(1).saturating_add(logo_top);
+        let logo_y1 =
+            logo_y0.saturating_add(history_cell::SessionHeaderHistoryCell::logo_height());
+        if event.row >= logo_y0 && event.row < logo_y1 {
+            header.throw_logo();
+            return true;
+        }
+        false
     }
 
     #[cfg(test)]

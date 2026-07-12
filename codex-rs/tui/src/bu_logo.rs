@@ -116,9 +116,90 @@ pub(crate) fn render_logo_lines_at(rx: f32, ry: f32) -> Vec<String> {
     lines
 }
 
+/// Physics for the orbit-mark drift + click-to-throw spin, ported from
+/// browser-use/terminal `welcome.rs` `WelcomeAnim`. Gentle y-axis drift at rest;
+/// a `throw()` adds impulse the decay/spring settle back to the resting tilt.
+#[derive(Debug)]
+pub(crate) struct WelcomeAnim {
+    pub rx: f32,
+    pub ry: f32,
+    vx: f32,
+    vy: f32,
+    base_rx: f32,
+    target_vy: f32,
+    last_tick: std::time::Instant,
+    rng: u32,
+}
+
+impl WelcomeAnim {
+    pub(crate) fn new() -> Self {
+        Self {
+            rx: 0.0,
+            ry: 0.0,
+            vx: 0.0,
+            vy: 0.0,
+            base_rx: 0.0,
+            target_vy: 0.4,
+            last_tick: std::time::Instant::now(),
+            rng: 0x9e37_79b9,
+        }
+    }
+
+    fn rand(&mut self) -> f32 {
+        // xorshift32
+        let mut x = self.rng;
+        x ^= x << 13;
+        x ^= x >> 17;
+        x ^= x << 5;
+        self.rng = x;
+        (x as f32) / (u32::MAX as f32)
+    }
+
+    /// Advance the animation to the current time.
+    pub(crate) fn tick(&mut self) {
+        let dt = self.last_tick.elapsed().as_secs_f32().min(0.1);
+        self.last_tick = std::time::Instant::now();
+        self.step(dt);
+    }
+
+    /// Advance the physics by an explicit timestep (also used by tests).
+    fn step(&mut self, dt: f32) {
+        self.rx += self.vx * dt;
+        self.ry += self.vy * dt;
+        let decay = 0.5_f32.powf(dt / 1.0);
+        self.vx *= decay;
+        self.vy = self.vy * decay + self.target_vy * (1.0 - decay);
+        // gentle spring back to the resting tilt so a post-click rx returns home
+        self.rx += (self.base_rx - self.rx) * (1.0 - (-dt * 1.2_f32).exp());
+    }
+
+    /// Add a random impulse — call on a click/drag inside the logo.
+    pub(crate) fn throw(&mut self) {
+        let rx_imp = (self.rand() * 2.0 - 1.0) * 9.0 + 5.0;
+        let ry_imp = (self.rand() * 2.0 - 1.0) * 7.0 + 7.0;
+        self.vx += rx_imp;
+        self.vy += ry_imp;
+    }
+
+    /// Render the logo rows at the current rotation.
+    pub(crate) fn render(&self) -> Vec<String> {
+        render_logo_lines_at(self.rx, self.ry)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn welcome_anim_throw_changes_velocity_and_drifts() {
+        let mut a = WelcomeAnim::new();
+        let before = a.ry;
+        a.throw();
+        // Advance with a deterministic timestep (tick()'s dt is ~0 in tests).
+        a.step(1.0 / 60.0);
+        assert!(a.ry != before, "throw should move the logo");
+    }
 
     #[test]
     fn logo_has_expected_dimensions_and_ink() {

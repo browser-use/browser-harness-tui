@@ -269,15 +269,20 @@ async fn ignore_same_thread_resume_reports_noop_for_current_thread() {
     });
 
     assert!(ignored);
-    let cell = match app_event_rx.try_recv() {
-        Ok(AppEvent::InsertHistoryCell(cell)) => cell,
-        other => panic!("expected info message after same-thread resume, saw {other:?}"),
-    };
-    let rendered = lines_to_single_string(&cell.display_lines(/*width*/ 80));
-    assert!(rendered.contains(&format!(
-        "Already viewing {}.",
-        test_path_display("/tmp/project")
-    )));
+    // Adding the info message first commits a live welcome header (if any) to
+    // scrollback, so scan the emitted cells for the "Already viewing" notice.
+    let needle = format!("Already viewing {}.", test_path_display("/tmp/project"));
+    let mut found = false;
+    while let Ok(event) = app_event_rx.try_recv() {
+        if let AppEvent::InsertHistoryCell(cell) = event {
+            let rendered = lines_to_single_string(&cell.display_lines(/*width*/ 80));
+            if rendered.contains(&needle) {
+                found = true;
+                break;
+            }
+        }
+    }
+    assert!(found, "expected an 'Already viewing' info message");
 }
 
 #[tokio::test]

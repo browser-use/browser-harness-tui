@@ -520,6 +520,8 @@ pub(crate) struct App {
 
     // Pager overlay state (Transcript or Static like Diff)
     pub(crate) overlay: Option<Overlay>,
+    // The on-screen rect the chat widget last rendered into, for mouse hit-testing.
+    last_chat_viewport: Rect,
     pub(crate) deferred_history_lines: Vec<crate::terminal_hyperlinks::HyperlinkLine>,
     has_emitted_history_lines: bool,
     transcript_reflow: TranscriptReflowState,
@@ -1015,6 +1017,7 @@ See the Codex keymap documentation for supported actions and examples."
             keymap: runtime_keymap,
             transcript_cells: Vec::new(),
             overlay: None,
+            last_chat_viewport: Rect::default(),
             deferred_history_lines: Vec::new(),
             has_emitted_history_lines: false,
             transcript_reflow: TranscriptReflowState::default(),
@@ -1260,6 +1263,14 @@ See the Codex keymap documentation for supported actions and examples."
                 TuiEvent::Key(key_event) => {
                     self.handle_key_event(tui, app_server, key_event).await;
                 }
+                TuiEvent::Mouse(mouse_event) => {
+                    if self
+                        .chat_widget
+                        .handle_mouse_event(self.last_chat_viewport, mouse_event)
+                    {
+                        tui.frame_requester().schedule_frame();
+                    }
+                }
                 TuiEvent::Paste(pasted) => {
                     // Many terminals convert newlines to \r when pasting (e.g., iTerm2),
                     // but tui-textarea expects \n. Normalize CR to LF.
@@ -1284,6 +1295,10 @@ See the Codex keymap documentation for supported actions and examples."
                     self.chat_widget.pre_draw_tick();
                     let rendered_area =
                         self.render_chat_widget_frame(tui, terminal_resize_reflow_enabled)?;
+                    self.last_chat_viewport = rendered_area;
+                    // Press-only mouse capture only while the welcome logo is up,
+                    // so ordinary text selection keeps working everywhere else.
+                    tui.set_mouse_capture(self.chat_widget.welcome_mouse_capture_active());
                     if self.chat_widget.ambient_pet_image_enabled() {
                         let terminal_size = tui.terminal.size()?;
                         let ambient_pet_area = Rect::new(

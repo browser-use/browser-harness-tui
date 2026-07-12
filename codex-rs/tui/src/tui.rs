@@ -230,6 +230,55 @@ impl Command for DisableAlternateScroll {
     }
 }
 
+/// Enable button press/release mouse reporting with SGR coordinates only.
+///
+/// Ported from browser-use/terminal: crossterm's `EnableMouseCapture` also turns
+/// on drag + all-motion tracking, which blocks ordinary terminal text
+/// selection. The welcome logo only needs press/release coordinates, so we
+/// enable the minimal set (`?1000h` press/release, `?1006h` SGR) — text
+/// selection keeps working everywhere else.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct EnableMouseClickCapture;
+
+impl Command for EnableMouseClickCapture {
+    fn write_ansi(&self, f: &mut impl fmt::Write) -> fmt::Result {
+        f.write_str(concat!("\x1b[?1000h", "\x1b[?1006h"))
+    }
+
+    #[cfg(windows)]
+    fn execute_winapi(&self) -> Result<()> {
+        Err(std::io::Error::other(
+            "tried to execute EnableMouseClickCapture using WinAPI; use ANSI instead",
+        ))
+    }
+
+    #[cfg(windows)]
+    fn is_ansi_code_supported(&self) -> bool {
+        true
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DisableMouseClickCapture;
+
+impl Command for DisableMouseClickCapture {
+    fn write_ansi(&self, f: &mut impl fmt::Write) -> fmt::Result {
+        f.write_str(concat!("\x1b[?1006l", "\x1b[?1000l"))
+    }
+
+    #[cfg(windows)]
+    fn execute_winapi(&self) -> Result<()> {
+        Err(std::io::Error::other(
+            "tried to execute DisableMouseClickCapture using WinAPI; use ANSI instead",
+        ))
+    }
+
+    #[cfg(windows)]
+    fn is_ansi_code_supported(&self) -> bool {
+        true
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RawModeRestore {
     Disable,
@@ -257,6 +306,8 @@ fn restore_common(
         first_error.get_or_insert(err);
     }
     let _ = execute!(stdout(), DisableFocusChange);
+    // Harmless if capture was never enabled; ensures no dangling mouse mode.
+    let _ = execute!(stdout(), DisableMouseClickCapture);
     if matches!(raw_mode_restore, RawModeRestore::Disable)
         && let Err(err) = disable_raw_mode()
     {
@@ -508,6 +559,9 @@ pub enum TuiEvent {
     Resize,
     /// A scheduled repaint that does not necessarily correspond to a terminal size change.
     Draw,
+    /// A terminal mouse event (only delivered while mouse capture is enabled,
+    /// e.g. on the animated welcome screen).
+    Mouse(crossterm::event::MouseEvent),
 }
 
 pub struct Tui {
@@ -532,6 +586,8 @@ pub struct Tui {
     is_zellij: bool,
     // When false, enter_alt_screen() becomes a no-op.
     alt_screen_enabled: bool,
+    // Whether press-only mouse capture is currently on (welcome screen only).
+    mouse_capture_enabled: bool,
     // Keeps unmanaged process stderr writes out of the inline viewport.
     _stderr_guard: terminal_stderr::TerminalStderrGuard,
 }
@@ -585,6 +641,7 @@ impl Tui {
             notification_condition: NotificationCondition::default(),
             is_zellij,
             alt_screen_enabled: true,
+            mouse_capture_enabled: false,
             _stderr_guard: stderr_guard,
         }
     }
@@ -592,6 +649,23 @@ impl Tui {
     /// Set whether alternate screen is enabled. When false, enter_alt_screen() becomes a no-op.
     pub fn set_alt_screen_enabled(&mut self, enabled: bool) {
         self.alt_screen_enabled = enabled;
+    }
+
+    /// Toggle press-only mouse capture (welcome screen). Idempotent.
+    pub(crate) fn set_mouse_capture(&mut self, enabled: bool) {
+        if enabled == self.mouse_capture_enabled {
+            return;
+        }
+        let result = if enabled {
+            execute!(self.terminal.backend_mut(), EnableMouseClickCapture)
+        } else {
+            execute!(self.terminal.backend_mut(), DisableMouseClickCapture)
+        };
+        if let Err(err) = result {
+            tracing::debug!(error = %err, "failed to toggle mouse capture");
+            return;
+        }
+        self.mouse_capture_enabled = enabled;
     }
 
     pub fn set_notification_settings(

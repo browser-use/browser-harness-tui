@@ -121,6 +121,19 @@ impl HistoryCell for TooltipHistoryCell {
 #[derive(Debug)]
 pub struct SessionInfoCell(CompositeHistoryCell);
 
+impl SessionInfoCell {
+    /// The animated welcome header, if this cell leads with one.
+    pub(crate) fn animated_header(&self) -> Option<&SessionHeaderHistoryCell> {
+        let header = self
+            .0
+            .parts
+            .first()?
+            .as_any()
+            .downcast_ref::<SessionHeaderHistoryCell>()?;
+        header.is_animated().then_some(header)
+    }
+}
+
 impl HistoryCell for SessionInfoCell {
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
         self.0.display_lines(width)
@@ -256,8 +269,13 @@ pub(crate) struct SessionHeaderHistoryCell {
     show_fast_status: bool,
     directory: PathBuf,
     yolo_mode: bool,
-    /// Drives the orbit-mark drift animation; `None` renders it static.
-    animation: Option<(std::time::Instant, crate::tui::FrameRequester)>,
+    /// Drives the orbit-mark drift + click-to-throw spin; `None` renders static.
+    /// `Mutex` (not `Cell`) because history cells must be `Send + Sync`.
+    animation: Option<(std::sync::Mutex<crate::bu_logo::WelcomeAnim>, crate::tui::FrameRequester)>,
+    /// Row offset (relative to the cell's first display line) of the logo block,
+    /// so the widget can hit-test mouse clicks against just the logo. Stores
+    /// `row + 1`; `0` means "not yet rendered".
+    logo_top_row: std::sync::atomic::AtomicU32,
 }
 
 impl SessionHeaderHistoryCell {
@@ -278,10 +296,43 @@ impl SessionHeaderHistoryCell {
         )
     }
 
-    /// Enable the gentle y-axis drift animation (Browser Use Terminal look).
+    /// Enable the gentle y-axis drift + click-to-throw animation (Browser Use
+    /// Terminal look).
     pub(crate) fn with_animation(mut self, frame_requester: crate::tui::FrameRequester) -> Self {
-        self.animation = Some((std::time::Instant::now(), frame_requester));
+        self.animation = Some((
+            std::sync::Mutex::new(crate::bu_logo::WelcomeAnim::new()),
+            frame_requester,
+        ));
         self
+    }
+
+    /// True when this header renders the animated welcome logo.
+    pub(crate) fn is_animated(&self) -> bool {
+        self.animation.is_some()
+    }
+
+    /// Add a random spin impulse to the logo (mouse click/drag).
+    pub(crate) fn throw_logo(&self) {
+        if let Some((anim, frame_requester)) = &self.animation {
+            if let Ok(mut anim) = anim.lock() {
+                anim.throw();
+            }
+            frame_requester.schedule_frame();
+        }
+    }
+
+    /// Row offset of the logo block within the cell's display lines (top border
+    /// = row 0). `None` until the cell has rendered at least once.
+    pub(crate) fn logo_top_row(&self) -> Option<u16> {
+        match self.logo_top_row.load(std::sync::atomic::Ordering::Relaxed) {
+            0 => None,
+            v => Some((v - 1) as u16),
+        }
+    }
+
+    /// Logo block height in rows.
+    pub(crate) fn logo_height() -> u16 {
+        crate::bu_logo::LOGO_H as u16
     }
 
     pub(crate) fn new_with_style(
@@ -301,6 +352,7 @@ impl SessionHeaderHistoryCell {
             directory,
             yolo_mode: false,
             animation: None,
+            logo_top_row: std::sync::atomic::AtomicU32::new(0),
         }
     }
 
@@ -345,9 +397,13 @@ impl SessionHeaderHistoryCell {
 
 impl HistoryCell for SessionHeaderHistoryCell {
     fn transcript_animation_tick(&self) -> Option<u64> {
-        self.animation
-            .as_ref()
-            .map(|(started, _)| started.elapsed().as_millis() as u64 / 70)
+        // A monotonically-changing tick invalidates the transcript overlay's
+        // cached tail each frame while the logo spins.
+        self.animation.as_ref().map(|(anim, _)| {
+            anim.lock()
+                .map(|a| (a.rx.to_bits() as u64) ^ ((a.ry.to_bits() as u64) << 1))
+                .unwrap_or(0)
+        })
     }
 
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
@@ -365,13 +421,25 @@ impl HistoryCell for SessionHeaderHistoryCell {
         let mut splash: Vec<Line<'static>> = Vec::new();
         if inner_width >= crate::bu_logo::LOGO_W {
             let logo_pad = center_pad(crate::bu_logo::LOGO_W);
-            // Gentle y-axis drift at ~14fps, matching the Browser Use Terminal
-            // welcome animation (0.4 rad/s). Static under tests for
-            // deterministic snapshots.
+            // The logo block starts here. `+1` accounts for the top border row
+            // that `with_border` prepends to these display lines.
+            self.logo_top_row.store(
+                (splash.len() as u32 + 1) + 1,
+                std::sync::atomic::Ordering::Relaxed,
+            );
+            // Gentle y-axis drift, matching Browser Use Terminal. Physics ticks
+            // here so a mouse throw settles over subsequent frames. Static under
+            // tests for deterministic snapshots.
             let logo_rows = match &self.animation {
-                Some((started, frame_requester)) if !cfg!(test) => {
-                    frame_requester.schedule_frame_in(std::time::Duration::from_millis(70));
-                    crate::bu_logo::render_logo_lines_at(0.0, started.elapsed().as_secs_f32() * 0.4)
+                Some((anim, frame_requester)) if !cfg!(test) => {
+                    frame_requester.schedule_frame_in(std::time::Duration::from_millis(50));
+                    match anim.lock() {
+                        Ok(mut a) => {
+                            a.tick();
+                            a.render()
+                        }
+                        Err(_) => crate::bu_logo::render_logo_lines(),
+                    }
                 }
                 _ => crate::bu_logo::render_logo_lines(),
             };
