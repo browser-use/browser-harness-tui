@@ -396,7 +396,12 @@ impl ExecCell {
         } else {
             strip_bash_lc_and_escape(&call.command)
         };
-        let highlighted_lines = highlight_bash_to_lines(&cmd_display);
+        // Render `browser-harness` scripts as a clean list of browser actions
+        // instead of the raw heredoc.
+        let highlighted_lines = match crate::browser_harness_exec::summary_line(&cmd_display) {
+            Some(summary) => vec![summary],
+            None => highlight_bash_to_lines(&cmd_display),
+        };
 
         let continuation_wrap_width = layout.command_continuation.wrap_width(width);
         let continuation_opts =

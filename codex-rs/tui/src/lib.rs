@@ -184,6 +184,7 @@ mod startup_hooks_review;
 mod status;
 mod status_indicator_widget;
 mod streaming;
+mod browser_harness_exec;
 mod bu_logo;
 mod style;
 mod terminal_hyperlinks;
