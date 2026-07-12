@@ -1,10 +1,15 @@
 ---
 source: tui/src/chatwidget/tests/popups_and_settings.rs
+assertion_line: 2703
 expression: popup
 ---
-  Model
-  Access other models with browser-harness tui --model <model_name> or in your
-
-› 1. test-visible-model *  test-visible-model description
-
-  Press enter to confirm or esc to go back
+    ╭──────────────────────────────────────────────────────────────────────╮
+    │                                                                      │
+    │  Model                                                               │
+    │  Access other models with browser-harness tui --model <model_name>   │
+    │                                                                      │
+    │› 1. test-visible-model *  test-visible-model description             │
+    │                                                                      │
+    │                                                                      │
+    │  Press enter to confirm or esc to go back                            │
+    ╰──────────────────────────────────────────────────────────────────────╯

@@ -1076,6 +1076,16 @@ impl BottomPane {
         self.push_view(Box::new(view));
     }
 
+    /// Show a selection view as a Browser Use Terminal-style centered modal.
+    /// Used for the user-facing slash menus (`/model`, `/browser`, `/secrets`).
+    pub(crate) fn show_modal_selection_view(
+        &mut self,
+        mut params: list_selection_view::SelectionViewParams,
+    ) {
+        params.centered_modal = true;
+        self.show_selection_view(params);
+    }
+
     fn apply_standard_popup_hint(&self, params: &mut list_selection_view::SelectionViewParams) {
         if params.footer_hint.is_none()
             || params.footer_hint.as_ref() == Some(&popup_consts::standard_popup_hint_line())

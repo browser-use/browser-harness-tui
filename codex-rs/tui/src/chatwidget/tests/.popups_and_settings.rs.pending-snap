@@ -1,0 +1,19 @@
+{"run_id":"1783822282-3967000","line":129,"new":{"module_name":"codex_tui__chatwidget__tests__popups_and_settings","snapshot_name":"marketplace_upgrade_loading_popup_snapshot","metadata":{"source":"tui/src/chatwidget/tests/popups_and_settings.rs","assertion_line":129,"expression":"upgrade_lines"},"snapshot":"│  Upgrading debug marketplace...                                                  │ | │›    Upgrading debug marketplace...  This updates when marketplace upgrade        │"},"old":{"module_name":"codex_tui__chatwidget__tests__popups_and_settings","metadata":{},"snapshot":"Upgrading debug marketplace... | ›    Upgrading debug marketplace...  This updates when marketplace upgrade completes."}}
+{"run_id":"1783822282-3967000","line":33,"new":null,"old":null}
+{"run_id":"1783822282-3967000","line":291,"new":{"module_name":"codex_tui__chatwidget__tests__popups_and_settings","snapshot_name":"plugins_popup_truncates_long_descriptions_in_list_rows","metadata":{"source":"tui/src/chatwidget/tests/popups_and_settings.rs","assertion_line":291,"expression":"verbose_row"},"snapshot":"    │  [-] Verbose Plugin  Available · ChatGPT Marketplace · T…  │"},"old":{"module_name":"codex_tui__chatwidget__tests__popups_and_settings","metadata":{},"snapshot":"  [-] Verbose Plugin  Available · ChatGPT Marketplace · This descri…"}}
+{"run_id":"1783822324-269747000","line":164,"new":null,"old":null}
+{"run_id":"1783822324-269747000","line":129,"new":{"module_name":"codex_tui__chatwidget__tests__popups_and_settings","snapshot_name":"marketplace_upgrade_loading_popup_snapshot","metadata":{"source":"tui/src/chatwidget/tests/popups_and_settings.rs","assertion_line":129,"expression":"upgrade_lines"},"snapshot":"│  Upgrading debug marketplace...                                                  │ | │›    Upgrading debug marketplace...  This updates when marketplace upgrade        │"},"old":{"module_name":"codex_tui__chatwidget__tests__popups_and_settings","metadata":{},"snapshot":"Upgrading debug marketplace... | ›    Upgrading debug marketplace...  This updates when marketplace upgrade completes."}}
+{"run_id":"1783822324-269747000","line":33,"new":null,"old":null}
+{"run_id":"1783822324-269747000","line":291,"new":{"module_name":"codex_tui__chatwidget__tests__popups_and_settings","snapshot_name":"plugins_popup_truncates_long_descriptions_in_list_rows","metadata":{"source":"tui/src/chatwidget/tests/popups_and_settings.rs","assertion_line":291,"expression":"verbose_row"},"snapshot":"    │  [-] Verbose Plugin  Available · ChatGPT Marketplace · T…  │"},"old":{"module_name":"codex_tui__chatwidget__tests__popups_and_settings","metadata":{},"snapshot":"  [-] Verbose Plugin  Available · ChatGPT Marketplace · This descri…"}}
+{"run_id":"1783822692-878909000","line":164,"new":null,"old":null}
+{"run_id":"1783822692-878909000","line":129,"new":null,"old":null}
+{"run_id":"1783822692-878909000","line":291,"new":null,"old":null}
+{"run_id":"1783822692-878909000","line":33,"new":null,"old":null}
+{"run_id":"1783822739-197100000","line":164,"new":null,"old":null}
+{"run_id":"1783822739-197100000","line":129,"new":null,"old":null}
+{"run_id":"1783822739-197100000","line":291,"new":null,"old":null}
+{"run_id":"1783822739-197100000","line":33,"new":null,"old":null}
+{"run_id":"1783822820-403917000","line":164,"new":null,"old":null}
+{"run_id":"1783822820-403917000","line":129,"new":null,"old":null}
+{"run_id":"1783822820-403917000","line":291,"new":null,"old":null}
+{"run_id":"1783822820-403917000","line":33,"new":null,"old":null}

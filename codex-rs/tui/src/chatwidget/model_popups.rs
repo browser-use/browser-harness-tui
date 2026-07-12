@@ -146,7 +146,7 @@ impl ChatWidget {
             "Model",
             "Choose the model and provider for this session",
         );
-        self.bottom_pane.show_selection_view(SelectionViewParams {
+        self.bottom_pane.show_modal_selection_view(SelectionViewParams {
             footer_hint: Some(standard_popup_hint_line()),
             items,
             header,
@@ -205,7 +205,7 @@ impl ChatWidget {
             "Model",
             "Access other models with browser-harness tui --model <model_name> or in your config.toml",
         );
-        self.bottom_pane.show_selection_view(SelectionViewParams {
+        self.bottom_pane.show_modal_selection_view(SelectionViewParams {
             footer_hint: Some(self.bottom_pane.standard_popup_hint_line()),
             items,
             header,
@@ -320,6 +320,8 @@ impl ChatWidget {
             });
         })];
 
+        // Two-column scope options with long descriptions; keep the wider
+        // bottom-anchored layout rather than the narrow centered modal.
         self.bottom_pane.show_selection_view(SelectionViewParams {
             title: Some(PLAN_MODE_REASONING_SCOPE_TITLE.to_string()),
             subtitle: Some(subtitle),
@@ -488,7 +490,7 @@ impl ChatWidget {
             format!("Select Reasoning Level for {model_slug}").bold(),
         ));
 
-        self.bottom_pane.show_selection_view(SelectionViewParams {
+        self.bottom_pane.show_modal_selection_view(SelectionViewParams {
             header: Box::new(header),
             footer_hint: Some(standard_popup_hint_line()),
             items,

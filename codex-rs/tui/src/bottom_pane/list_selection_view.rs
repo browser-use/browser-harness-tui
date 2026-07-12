@@ -9,6 +9,10 @@ use ratatui::layout::Rect;
 use ratatui::style::Stylize;
 use ratatui::text::Line;
 use ratatui::text::Span;
+use ratatui::widgets::Block;
+use ratatui::widgets::BorderType;
+use ratatui::widgets::Borders;
+use ratatui::widgets::Clear;
 use ratatui::widgets::Paragraph;
 use ratatui::widgets::Widget;
 
@@ -202,6 +206,10 @@ pub(crate) struct SelectionViewParams {
 
     /// Called when the picker is dismissed via Esc/Ctrl+C without selecting.
     pub on_cancel: OnCancelCallback,
+
+    /// Render as a Browser Use Terminal-style centered rounded modal floating
+    /// over the viewport, instead of the default bottom-anchored popup.
+    pub centered_modal: bool,
 }
 
 impl Default for SelectionViewParams {
@@ -230,6 +238,7 @@ impl Default for SelectionViewParams {
             preserve_side_content_bg: false,
             on_selection_changed: None,
             on_cancel: None,
+            centered_modal: false,
         }
     }
 }
@@ -273,6 +282,8 @@ pub(crate) struct ListSelectionView {
     /// Called when the picker is dismissed via Esc/Ctrl+C without selecting.
     on_cancel: OnCancelCallback,
     keymap: ListKeymap,
+    /// Render as a floating centered rounded modal (Browser Use Terminal look).
+    centered_modal: bool,
 }
 
 impl ListSelectionView {
@@ -344,6 +355,7 @@ impl ListSelectionView {
             on_selection_changed: params.on_selection_changed,
             on_cancel: params.on_cancel,
             keymap,
+            centered_modal: params.centered_modal,
         };
         s.apply_filter();
         if s.tabs_enabled() && !has_initial_selected_idx && s.state.selected_idx.is_none() {
@@ -1071,8 +1083,17 @@ impl BottomPaneView for ListSelectionView {
     }
 }
 
-impl Renderable for ListSelectionView {
-    fn desired_height(&self, width: u16) -> u16 {
+/// Max width of the floating centered modal (Browser Use Terminal parity).
+const MODAL_MAX_W: u16 = 84;
+/// Min size of the floating centered modal.
+const MODAL_MIN_W: u16 = 40;
+const MODAL_MIN_H: u16 = 10;
+/// Horizontal screen margin kept around the modal.
+const MODAL_H_MARGIN: u16 = 4;
+
+impl ListSelectionView {
+    /// Content height the popup wants at the given inner width.
+    fn content_desired_height(&self, width: u16) -> u16 {
         // Inner content width after menu surface horizontal insets (2 per side).
         let inner_width = popup_content_width(width);
 
@@ -1130,7 +1151,53 @@ impl Renderable for ListSelectionView {
         height
     }
 
-    fn render(&self, area: Rect, buf: &mut Buffer) {
+    /// Modal box width for a given available screen width.
+    fn modal_width(area_width: u16) -> u16 {
+        if area_width <= MODAL_MIN_W {
+            area_width
+        } else {
+            area_width
+                .saturating_sub(MODAL_H_MARGIN * 2)
+                .min(MODAL_MAX_W)
+                .max(MODAL_MIN_W)
+        }
+    }
+
+    /// Compute the centered modal box, paint its rounded border + surface, and
+    /// return the inner content rect. Mirrors Terminal's `surface_popup_rect` +
+    /// `render_surface_popup_box`.
+    fn render_modal_frame(&self, area: Rect, buf: &mut Buffer) -> Rect {
+        let box_w = Self::modal_width(area.width);
+        let content_w = popup_content_width(box_w);
+        let desired = self.content_desired_height(box_w).saturating_add(2); // + border
+        let box_h = desired
+            .max(MODAL_MIN_H.min(area.height))
+            .min(area.height);
+        let box_x = area.x + area.width.saturating_sub(box_w) / 2;
+        let box_y = area.y + area.height.saturating_sub(box_h) / 2;
+        let rect = Rect::new(box_x, box_y, box_w, box_h);
+
+        Clear.render(rect, buf);
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
+            .border_style(crate::theme::border())
+            .style(crate::style::user_message_style());
+        let inner = block.inner(rect);
+        block.render(rect, buf);
+        let _ = content_w;
+        inner
+    }
+
+    fn render_content(&self, area: Rect, buf: &mut Buffer) {
+        if area.height == 0 || area.width == 0 {
+            return;
+        }
+        let area = if self.centered_modal {
+            self.render_modal_frame(area, buf)
+        } else {
+            area
+        };
         if area.height == 0 || area.width == 0 {
             return;
         }
@@ -1358,6 +1425,21 @@ impl Renderable for ListSelectionView {
                 hint.clone().dim().render(hint_area, buf);
             }
         }
+    }
+}
+
+impl Renderable for ListSelectionView {
+    fn desired_height(&self, width: u16) -> u16 {
+        if self.centered_modal {
+            // Report a tall height so the inline viewport expands and the modal
+            // floats centered over the screen, like Browser Use Terminal.
+            return 4000;
+        }
+        self.content_desired_height(width)
+    }
+
+    fn render(&self, area: Rect, buf: &mut Buffer) {
+        self.render_content(area, buf);
     }
 }
 

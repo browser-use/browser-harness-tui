@@ -131,7 +131,7 @@ impl ChatWidget {
                 ..Default::default()
             },
         ];
-        self.bottom_pane.show_selection_view(SelectionViewParams {
+        self.bottom_pane.show_modal_selection_view(SelectionViewParams {
             title: Some("Secrets".to_string()),
             subtitle: Some(
                 "Stored encrypted in browser-harness; the agent uses secret()/totp() without ever seeing values"
@@ -301,7 +301,7 @@ impl ChatWidget {
                 ..Default::default()
             }
         };
-        self.bottom_pane.show_selection_view(SelectionViewParams {
+        self.bottom_pane.show_modal_selection_view(SelectionViewParams {
             title: Some("Browser".to_string()),
             subtitle: Some("Choose the browser backend for this workspace".to_string()),
             footer_hint: Some(standard_popup_hint_line()),
