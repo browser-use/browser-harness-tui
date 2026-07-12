@@ -135,4 +135,10 @@ pub(crate) trait BottomPaneView: Renderable {
     fn next_frame_delay(&self) -> Option<std::time::Duration> {
         None
     }
+
+    /// True when this view should float as a centered modal over the chat
+    /// (Browser Use Terminal look) rather than replace the composer inline.
+    fn is_centered_modal(&self) -> bool {
+        false
+    }
 }

@@ -1,8 +1,9 @@
 ---
 source: tui/src/chatwidget/tests/exec_flow.rs
+assertion_line: 781
 expression: normalize_snapshot_paths(rendered)
 ---
-• • Waiting for background terminal... (0s • es…
+• Waiting for background terminal... (0s • esc …
   └ cargo test -p codex-core -- --exact…
 
 ╭──────────────────────────────────────────────╮

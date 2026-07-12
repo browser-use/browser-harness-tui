@@ -1,6 +1,7 @@
 ---
 source: tui/src/status_indicator_widget.rs
+assertion_line: 372
 expression: terminal.backend()
 ---
-"• • Working... (0s …"
+"• Working... (0s • …"
 "                    "

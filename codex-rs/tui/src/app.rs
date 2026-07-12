@@ -1351,7 +1351,13 @@ See the Codex keymap documentation for supported actions and examples."
         tui: &mut tui::Tui,
         terminal_resize_reflow_enabled: bool,
     ) -> Result<Rect> {
-        let desired_height = self.chat_widget.desired_height(tui.terminal.size()?.width);
+        let terminal_size = tui.terminal.size()?;
+        let desired_height = if self.chat_widget.wants_full_viewport() {
+            // Fill the window so a floating modal centers over the chat.
+            terminal_size.height
+        } else {
+            self.chat_widget.desired_height(terminal_size.width)
+        };
         let mut rendered_area = Rect::default();
         if terminal_resize_reflow_enabled {
             tui.draw_with_resize_reflow(desired_height, |frame| {

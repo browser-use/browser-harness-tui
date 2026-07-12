@@ -1,5 +1,6 @@
 ---
 source: tui/src/chatwidget/tests/status_and_layout.rs
+assertion_line: 3647
 expression: normalize_snapshot_paths(term.backend().vt100().screen().contents())
 ---
 
@@ -36,7 +37,7 @@ expression: normalize_snapshot_paths(term.backend().vt100().screen().contents())
   └ Search Change Approved
     Read diff_render.rs
 
-• • Investigating rendering code... (0s • esc to interrupt)
+• Investigating rendering code... (0s • esc to interrupt)
 
 ╭──────────────────────────────────────────────────────────────────────────────╮
 │ > Summarize recent commits                                                   │

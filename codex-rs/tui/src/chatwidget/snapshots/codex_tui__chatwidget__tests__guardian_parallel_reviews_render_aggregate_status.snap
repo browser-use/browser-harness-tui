@@ -1,8 +1,9 @@
 ---
 source: tui/src/chatwidget/tests/guardian.rs
+assertion_line: 548
 expression: normalize_snapshot_paths(rendered)
 ---
-• • Reviewing 2 approval requests... (0s • esc to interrupt)
+• Reviewing 2 approval requests... (0s • esc to interrupt)
   └ • rm -rf '/tmp/guardian target 1'
     • rm -rf '/tmp/guardian target 2'
 

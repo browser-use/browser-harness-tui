@@ -1,9 +1,10 @@
 ---
 source: tui/src/chatwidget/tests/side.rs
+assertion_line: 343
 expression: normalized_backend_snapshot(terminal.backend())
 ---
 "                                                                                "
-"• • Working... (0s • esc to interrupt)                                          "
+"• Working... (0s • esc to interrupt)                                            "
 "                                                                                "
 "╭──────────────────────────────────────────────────────────────────────────────╮"
 "│ > Ask Codex to do anything                                                   │"

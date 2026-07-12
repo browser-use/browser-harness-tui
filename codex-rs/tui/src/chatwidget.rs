@@ -1728,6 +1728,12 @@ impl ChatWidget {
         self.bottom_pane.composer_is_empty()
     }
 
+    /// Whether a floating centered modal is active and the viewport should be
+    /// grown to the full terminal height so it can center over the chat.
+    pub(crate) fn wants_full_viewport(&self) -> bool {
+        self.bottom_pane.has_centered_modal()
+    }
+
     /// The live animated welcome header, when it is the current active cell.
     fn animated_welcome_header(&self) -> Option<&history_cell::SessionHeaderHistoryCell> {
         self.transcript

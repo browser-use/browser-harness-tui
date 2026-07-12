@@ -253,15 +253,18 @@ impl Renderable for StatusIndicatorWidget {
         let motion_mode = MotionMode::from_animations_enabled(self.animations_enabled);
 
         // Browser Use Terminal live status: `• Working...` with a shimmer sweep.
+        // The activity indicator already draws the leading bullet/spinner, so we
+        // fall back to a static bullet only when it produces nothing.
         let mut spans = Vec::with_capacity(6);
-        spans.push(Span::styled("• ", crate::theme::dim()));
         if let Some(indicator) = activity_indicator(
             Some(self.last_resume_at),
             motion_mode,
-            ReducedMotionIndicator::Hidden,
+            ReducedMotionIndicator::StaticBullet,
         ) {
             spans.push(indicator);
             spans.push(" ".into());
+        } else {
+            spans.push(Span::styled("• ", crate::theme::dim()));
         }
         let header = if self.header.ends_with('…') || self.header.ends_with("...") {
             self.header.clone()
