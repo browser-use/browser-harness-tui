@@ -86,18 +86,30 @@ pub(crate) fn summary_line(cmd_display: &str) -> Option<Line<'static>> {
     if actions.is_empty() {
         return None;
     }
-    const MAX: usize = 6;
+    const MAX: usize = 5;
     let truncated = actions.len() > MAX;
-    let shown = actions.into_iter().take(MAX).collect::<Vec<_>>().join("  ·  ");
+    let shown = actions
+        .into_iter()
+        .take(MAX)
+        .collect::<Vec<_>>()
+        .join(", ");
     let mut spans = vec![
         Span::styled("browser", crate::theme::accent()),
-        Span::styled("  ", crate::theme::dim()),
+        Span::from("  "),
         Span::from(shown),
     ];
     if truncated {
-        spans.push(Span::styled("  …", crate::theme::dim()));
+        spans.push(Span::styled(" …", crate::theme::dim()));
     }
     Some(Line::from(spans))
+}
+
+/// Whether a command display is a `browser-harness` heredoc (used to suppress
+/// its raw stdout dict in the transcript).
+pub(crate) fn is_browser_harness_command(cmd_display: &str) -> bool {
+    heredoc_body(cmd_display).is_some_and(|body| {
+        body.lines().any(|l| parse_call(l.trim()).is_some())
+    })
 }
 
 /// Extract the body of a `browser-harness <<'TAG' … TAG` heredoc.

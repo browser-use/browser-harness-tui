@@ -397,7 +397,10 @@ impl ExecCell {
             strip_bash_lc_and_escape(&call.command)
         };
         // Render `browser-harness` scripts as a clean list of browser actions
-        // instead of the raw heredoc.
+        // instead of the raw heredoc, and hide their noisy stdout (page_info
+        // dicts, screenshot paths) on success.
+        let is_browser_harness =
+            crate::browser_harness_exec::is_browser_harness_command(&cmd_display);
         let highlighted_lines = match crate::browser_harness_exec::summary_line(&cmd_display) {
             Some(summary) => vec![summary],
             None => highlight_bash_to_lines(&cmd_display),
@@ -444,7 +447,11 @@ impl ExecCell {
             ));
         }
 
-        if let Some(output) = call.output.as_ref() {
+        // Browser-harness commands: hide the raw stdout when the step succeeded
+        // (it's internal page state / paths). Keep it on failure for debugging.
+        let suppress_output = is_browser_harness
+            && call.output.as_ref().is_some_and(|o| o.exit_code == 0);
+        if let Some(output) = call.output.as_ref().filter(|_| !suppress_output) {
             let line_limit = if call.is_user_shell_command() {
                 USER_SHELL_TOOL_CALL_MAX_LINES
             } else {

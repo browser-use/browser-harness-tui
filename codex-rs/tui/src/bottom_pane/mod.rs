@@ -1257,19 +1257,6 @@ impl BottomPane {
             .is_some_and(bottom_pane_view::BottomPaneView::terminal_title_requires_action)
     }
 
-    /// Whether the active bottom-pane view is a floating centered modal.
-    pub(crate) fn has_centered_modal(&self) -> bool {
-        self.active_view()
-            .is_some_and(BottomPaneView::is_centered_modal)
-    }
-
-    /// Render the active view (e.g. a centered modal) into `area`.
-    pub(crate) fn render_active_view(&self, area: Rect, buf: &mut Buffer) {
-        if let Some(view) = self.active_view() {
-            view.render(area, buf);
-        }
-    }
-
     pub(crate) fn has_active_view(&self) -> bool {
         !self.view_stack.is_empty()
     }

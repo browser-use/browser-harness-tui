@@ -111,21 +111,7 @@ impl TranscriptAreaRenderable<'_> {
 
 impl Renderable for ChatWidget {
     fn render(&self, area: Rect, buf: &mut Buffer) {
-        if self.bottom_pane.has_centered_modal() {
-            // Draw the existing chat/welcome as the backdrop, then float the
-            // modal centered on top of it (Browser Use Terminal look).
-            if let Some(cell) = &self.transcript.active_cell {
-                TranscriptAreaRenderable {
-                    child: cell.as_ref(),
-                    top: 1,
-                    right: 0,
-                }
-                .render(area, buf);
-            }
-            self.bottom_pane.render_active_view(area, buf);
-        } else {
-            self.as_renderable().render(area, buf);
-        }
+        self.as_renderable().render(area, buf);
         self.last_rendered_width.set(Some(area.width as usize));
     }
 

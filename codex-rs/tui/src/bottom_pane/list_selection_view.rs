@@ -920,10 +920,6 @@ impl ListSelectionView {
 }
 
 impl BottomPaneView for ListSelectionView {
-    fn is_centered_modal(&self) -> bool {
-        self.centered_modal
-    }
-
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         // Searchable lists reserve printable characters for query input. This
         // keeps vim-style plain j/k/h/l useful in non-search lists without
