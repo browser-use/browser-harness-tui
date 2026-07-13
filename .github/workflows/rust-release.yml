@@ -251,7 +251,7 @@ jobs:
           cargo build --target "$target" --release --timings "${build_args[@]}"
 
       - name: Upload Cargo timings
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cargo-timings-rust-release-${{ matrix.target }}-${{ matrix.bundle }}
           path: codex-rs/target/**/cargo-timings/cargo-timing.html
@@ -277,7 +277,7 @@ jobs:
             --binaries "${binaries[*]}"
 
       - name: Upload symbols archive
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact_name }}-symbols
           path: codex-rs/symbols-dist/${{ matrix.artifact_name }}/*
@@ -310,7 +310,7 @@ jobs:
 
       - if: ${{ runner.os == 'macOS' }}
         name: Upload unsigned macOS artifacts
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact_name }}-unsigned
           path: codex-rs/unsigned-dist/${{ matrix.target }}/*
@@ -413,7 +413,7 @@ jobs:
 
       - name: Upload Python runtime wheel
         if: ${{ matrix.bundle == 'primary' && runner.os != 'macOS' }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: python-runtime-wheel-${{ matrix.target }}
           path: python-runtime-dist/${{ matrix.target }}/*.whl
@@ -456,7 +456,7 @@ jobs:
             zstd -T0 -19 --rm "$dest/$base"
           done
 
-      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ runner.os != 'macOS' }}
         with:
           name: ${{ matrix.artifact_name }}
@@ -570,7 +570,7 @@ jobs:
           done
 
       - name: Upload signed macOS binaries
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact_name }}-signed-binaries
           path: signed-macos/${{ matrix.target }}/*
@@ -578,7 +578,7 @@ jobs:
 
       - name: Upload binary signing verification
         if: ${{ always() }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact_name }}-binary-signing-verification
           path: macos-binary-signing-verification/${{ matrix.target }}/
@@ -680,7 +680,7 @@ jobs:
 
       - name: Upload unsigned macOS DMG
         if: ${{ matrix.build_dmg == 'true' }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact_name }}-unsigned-dmg
           path: codex-rs/target/${{ matrix.target }}/release/codex-${{ matrix.target }}.dmg
@@ -745,7 +745,7 @@ jobs:
 
       - name: Upload Python runtime wheel
         if: ${{ matrix.bundle == 'primary' }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: python-runtime-wheel-${{ matrix.target }}
           path: python-runtime-dist/${{ matrix.target }}/*.whl
@@ -767,7 +767,7 @@ jobs:
           done
 
       - name: Upload packaged macOS artifacts
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact_name }}-packaged
           path: codex-rs/dist/${{ matrix.target }}/*
@@ -855,7 +855,7 @@ jobs:
             >"${report_dir}/signature-info.yaml"
 
       - name: Upload signed macOS DMG
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact_name }}-signed-dmg
           path: ${{ runner.temp }}/unsigned-dmg/codex-${{ matrix.target }}.dmg
@@ -863,7 +863,7 @@ jobs:
 
       - name: Upload DMG signing verification
         if: ${{ always() }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact_name }}-dmg-signing-verification
           path: macos-dmg-signing-verification/${{ matrix.target }}/
@@ -1025,7 +1025,7 @@ jobs:
           cp "$dmg_path" "dist/${target}/codex-${target}.dmg"
 
       - name: Upload verified macOS artifacts
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact_name }}
           path: codex-rs/dist/${{ matrix.target }}/*
