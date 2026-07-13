@@ -21,6 +21,12 @@ on:
 permissions:
   contents: write
 
+# Fetch git dependencies (e.g. codex-realtime-webrtc's libwebrtc/libyuv Chromium
+# submodules) via the system git CLI. libgit2's SecureTransport flakes on those
+# large clones from chromium.googlesource.com on CI runners.
+env:
+  CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+
 jobs:
   build:
     name: ${{ matrix.target }}
