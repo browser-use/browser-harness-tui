@@ -76,141 +76,103 @@ impl ChatWidget {
             .collect();
 
         let current_model = self.current_model();
-        let current_label = presets
-            .iter()
-            .find(|preset| preset.model.as_str() == current_model)
-            .map(|preset| preset.model.to_string())
-            .unwrap_or_else(|| self.model_display_name().to_string());
+        let mut items: Vec<SelectionItem> = Vec::new();
 
-        let (mut auto_presets, other_presets): (Vec<ModelPreset>, Vec<ModelPreset>) = presets
-            .into_iter()
-            .partition(|preset| Self::is_auto_model(&preset.model));
-
-        if auto_presets.is_empty() {
-            self.open_all_models_popup(other_presets);
-            return;
-        }
-
-        auto_presets.sort_by_key(|preset| Self::auto_model_order(&preset.model));
-        let mut items: Vec<SelectionItem> = auto_presets
-            .into_iter()
-            .map(|preset| {
-                let description =
-                    (!preset.description.is_empty()).then_some(preset.description.clone());
-                let model = preset.model.clone();
-                let should_prompt_plan_mode_scope = self.should_prompt_plan_mode_reasoning_scope(
-                    model.as_str(),
-                    Some(preset.default_reasoning_effort.clone()),
-                );
+        // Grouped multi-provider catalog (Browser Use Terminal parity):
+        // recommended + provider groups. Backend routing is via LiteLLM, so
+        // selecting one of these only needs to swap the model string; the
+        // session's provider stays `litellm`.
+        for group in crate::model_catalog_bu::grouped() {
+            items.push(Self::model_section_header(group.key));
+            for entry in group.entries {
+                // `recommended` rows show the provider label in the second
+                // column; provider-group rows show the model id.
+                let second_column = if group.key == "recommended" {
+                    entry.provider_label
+                } else {
+                    entry.model_id
+                };
+                let model = entry.model_id.to_string();
+                let effort = Some(ReasoningEffortConfig::default());
+                let should_prompt_plan_mode_scope =
+                    self.should_prompt_plan_mode_reasoning_scope(entry.model_id, effort.clone());
                 let actions = Self::model_selection_actions(
                     model.clone(),
-                    Some(preset.default_reasoning_effort.clone()),
+                    effort,
                     should_prompt_plan_mode_scope,
                 );
-                SelectionItem {
-                    name: model.clone(),
-                    description,
-                    is_current: model.as_str() == current_model,
-                    is_default: preset.is_default,
+                items.push(SelectionItem {
+                    name: entry.display_name.to_string(),
+                    description: Some(second_column.to_string()),
+                    is_current: entry.model_id == current_model,
                     actions,
                     dismiss_on_select: true,
+                    search_value: Some(entry.search_value()),
                     ..Default::default()
-                }
-            })
-            .collect();
-
-        if !other_presets.is_empty() {
-            let all_models = other_presets;
-            let actions: Vec<SelectionAction> = vec![Box::new(move |tx| {
-                tx.send(AppEvent::OpenAllModelsPopup {
-                    models: all_models.clone(),
                 });
-            })];
-
-            let is_current = !items.iter().any(|item| item.is_current);
-            let description = Some(format!(
-                "Choose a specific model and reasoning level (current: {current_label})"
-            ));
-
-            items.push(SelectionItem {
-                name: "All models".to_string(),
-                description,
-                is_current,
-                actions,
-                dismiss_on_select: true,
-                ..Default::default()
-            });
+            }
         }
 
-        let header = self.model_menu_header(
-            "Model",
-            "Choose the model and provider for this session",
-        );
+        // `openai`: the live Codex GPT presets, keeping their real model slugs
+        // and the existing reasoning-effort selection flow.
+        if !presets.is_empty() {
+            items.push(Self::model_section_header("openai"));
+            for preset in presets.into_iter() {
+                let is_current = preset.model.as_str() == current_model;
+                let single_supported_effort = preset.supported_reasoning_efforts.len() == 1;
+                let display_name = if preset.display_name.is_empty() {
+                    preset.model.clone()
+                } else {
+                    preset.display_name.clone()
+                };
+                let search_value = format!(
+                    "{} openai {}",
+                    display_name.to_lowercase(),
+                    preset.model.to_lowercase()
+                );
+                let preset_for_action = preset.clone();
+                let actions: Vec<SelectionAction> = vec![Box::new(move |tx| {
+                    tx.send(AppEvent::OpenReasoningPopup {
+                        model: preset_for_action.clone(),
+                    });
+                })];
+                items.push(SelectionItem {
+                    name: display_name,
+                    description: Some(preset.model.clone()),
+                    is_current,
+                    is_default: preset.is_default,
+                    actions,
+                    dismiss_on_select: single_supported_effort,
+                    dismiss_parent_on_child_accept: !single_supported_effort,
+                    search_value: Some(search_value),
+                    ..Default::default()
+                });
+            }
+        }
+
+        let header =
+            self.model_menu_header("Model", "Pick a recommended model or choose a provider");
         self.bottom_pane.show_modal_selection_view(SelectionViewParams {
             footer_hint: Some(standard_popup_hint_line()),
             items,
             header,
+            is_searchable: true,
+            search_placeholder: Some("Search models".to_string()),
+            col_width_mode: ColumnWidthMode::AutoAllRows,
             ..Default::default()
         });
     }
 
-    fn is_auto_model(model: &str) -> bool {
-        model.starts_with("codex-auto-")
-    }
-
-    fn auto_model_order(model: &str) -> usize {
-        match model {
-            "codex-auto-fast" => 0,
-            "codex-auto-balanced" => 1,
-            "codex-auto-thorough" => 2,
-            _ => 3,
-        }
-    }
-
-    pub(crate) fn open_all_models_popup(&mut self, presets: Vec<ModelPreset>) {
-        if presets.is_empty() {
-            self.add_info_message(
-                "No additional models are available right now.".to_string(),
-                /*hint*/ None,
-            );
-            return;
-        }
-
-        let mut items: Vec<SelectionItem> = Vec::new();
-        for preset in presets.into_iter() {
-            let description =
-                (!preset.description.is_empty()).then_some(preset.description.to_string());
-            let is_current = preset.model.as_str() == self.current_model();
-            let single_supported_effort = preset.supported_reasoning_efforts.len() == 1;
-            let preset_for_action = preset.clone();
-            let actions: Vec<SelectionAction> = vec![Box::new(move |tx| {
-                let preset_for_event = preset_for_action.clone();
-                tx.send(AppEvent::OpenReasoningPopup {
-                    model: preset_for_event,
-                });
-            })];
-            items.push(SelectionItem {
-                name: preset.model.clone(),
-                description,
-                is_current,
-                is_default: preset.is_default,
-                actions,
-                dismiss_on_select: single_supported_effort,
-                dismiss_parent_on_child_accept: !single_supported_effort,
-                ..Default::default()
-            });
-        }
-
-        let header = self.model_menu_header(
-            "Model",
-            "Access other models with browser-harness tui --model <model_name> or in your config.toml",
-        );
-        self.bottom_pane.show_modal_selection_view(SelectionViewParams {
-            footer_hint: Some(self.bottom_pane.standard_popup_hint_line()),
-            items,
-            header,
+    /// Build a non-selectable, muted section header row (e.g. "recommended").
+    /// Disabled so keyboard navigation skips it; the empty `search_value` hides
+    /// it as soon as the user types a query.
+    fn model_section_header(key: &str) -> SelectionItem {
+        SelectionItem {
+            name: key.to_string(),
+            is_disabled: true,
+            search_value: Some(String::new()),
             ..Default::default()
-        });
+        }
     }
 
     fn model_selection_actions(

@@ -1,21 +1,21 @@
 ---
 source: tui/src/chatwidget/tests/popups_and_settings.rs
-assertion_line: 2603
 expression: popup
 ---
     ╭──────────────────────────────────────────────────────────────────────╮
     │                                                                      │
     │  Model                                                               │
-    │  Access other models with browser-harness tui --model <model_name>   │
+    │  Pick a recommended model or choose a provider                       │
     │                                                                      │
-    │  1. gpt-5.5 (default)  Frontier model for complex coding, research,  │
-    │                        and real-world work.                          │
-    │  2. gpt-5.4            Strong model for everyday coding.             │
-    │  3. gpt-5.4-mini       Small, fast, and cost-efficient model for     │
-    │                        simpler coding tasks.                         │
-    │  4. gpt-5.3-codex      Coding-optimized model.                       │
-    │› 5. gpt-5.2 *          Optimized for professional work and long-     │
-    │                        running agents.                               │
+    │  Search models                                                       │
+    │  recommended                                                         │
+    │› GPT-5.5                 OpenRouter                                  │
+    │  Claude Opus 4.8         Anthropic                                   │
+    │  Claude Fable 5          Anthropic                                   │
+    │  Gemini 3.1 Pro          Google                                      │
+    │  anthropic                                                           │
+    │  Claude Sonnet 4.6       claude-sonnet-4-6                           │
+    │  Claude Opus 4.8         claude-opus-4-8                             │
     │                                                                      │
     │  Press enter to confirm or esc to go back                            │
     ╰──────────────────────────────────────────────────────────────────────╯

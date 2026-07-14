@@ -2701,13 +2701,21 @@ async fn model_picker_hides_show_in_picker_false_models_from_cache() {
     ]);
     let popup = render_bottom_popup(&chat, /*width*/ 80);
     assert_chatwidget_snapshot!("model_picker_filters_hidden_models", popup);
+
+    // The `openai` group (live presets) lives below the fold in the grouped
+    // picker, so filter to it to verify the show_in_picker gate. Only the
+    // visible preset was inserted, so it is the sole match.
+    for c in "test-".chars() {
+        chat.handle_key_event(KeyEvent::from(KeyCode::Char(c)));
+    }
+    let filtered = render_bottom_popup(&chat, /*width*/ 80);
     assert!(
-        popup.contains("test-visible-model"),
-        "expected visible model to appear in picker:\n{popup}"
+        filtered.contains("test-visible-model"),
+        "expected visible model to appear in picker:\n{filtered}"
     );
     assert!(
-        !popup.contains("test-hidden-model"),
-        "expected hidden model to be excluded from picker:\n{popup}"
+        !filtered.contains("test-hidden-model"),
+        "expected hidden model to be excluded from picker:\n{filtered}"
     );
 }
 

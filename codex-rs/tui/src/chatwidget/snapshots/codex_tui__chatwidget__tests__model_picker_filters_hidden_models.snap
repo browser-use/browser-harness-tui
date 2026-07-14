@@ -1,14 +1,21 @@
 ---
 source: tui/src/chatwidget/tests/popups_and_settings.rs
-assertion_line: 2703
 expression: popup
 ---
     ╭──────────────────────────────────────────────────────────────────────╮
     │                                                                      │
     │  Model                                                               │
-    │  Access other models with browser-harness tui --model <model_name>   │
+    │  Pick a recommended model or choose a provider                       │
     │                                                                      │
-    │› 1. test-visible-model *  test-visible-model description             │
+    │  Search models                                                       │
+    │  recommended                                                         │
+    │› GPT-5.5                 OpenRouter                                  │
+    │  Claude Opus 4.8         Anthropic                                   │
+    │  Claude Fable 5          Anthropic                                   │
+    │  Gemini 3.1 Pro          Google                                      │
+    │  anthropic                                                           │
+    │  Claude Sonnet 4.6       claude-sonnet-4-6                           │
+    │  Claude Opus 4.8         claude-opus-4-8                             │
     │                                                                      │
     │  Press enter to confirm or esc to go back                            │
     ╰──────────────────────────────────────────────────────────────────────╯
