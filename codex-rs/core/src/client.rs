@@ -32,6 +32,9 @@ use std::sync::atomic::Ordering;
 
 use codex_api::ApiError;
 use codex_api::AuthProvider;
+use codex_api::ChatCompletionsClient as ApiChatCompletionsClient;
+use codex_api::ChatCompletionsRequest;
+use codex_api::ChatStreamOptions;
 use codex_api::CompactClient as ApiCompactClient;
 use codex_api::CompactionInput as ApiCompactionInput;
 use codex_api::Compression;
@@ -58,6 +61,7 @@ use codex_api::SseTelemetry;
 use codex_api::TransportError;
 use codex_api::WebsocketTelemetry;
 use codex_api::auth_header_telemetry;
+use codex_api::build_chat_messages;
 use codex_api::build_session_headers;
 use codex_api::create_text_param_for_request;
 use codex_api::response_create_client_metadata;
@@ -84,6 +88,7 @@ use codex_protocol::protocol::W3cTraceContext;
 use codex_rollout_trace::CompactionTraceContext;
 use codex_rollout_trace::InferenceTraceAttempt;
 use codex_rollout_trace::InferenceTraceContext;
+use codex_tools::create_tools_json_for_chat_completions;
 use codex_tools::create_tools_json_for_responses_api;
 use eventsource_stream::Event;
 use eventsource_stream::EventStreamError;
@@ -148,6 +153,7 @@ const RESPONSES_WEBSOCKETS_V2_BETA_HEADER_VALUE: &str = "responses_websockets=20
 const X_OPENAI_INTERNAL_CODEX_RESPONSES_LITE_HEADER: &str =
     "x-openai-internal-codex-responses-lite";
 const RESPONSES_ENDPOINT: &str = "/responses";
+const CHAT_COMPLETIONS_ENDPOINT: &str = "/chat/completions";
 const RESPONSES_COMPACT_ENDPOINT: &str = "/responses/compact";
 // `/responses/compact` is unary, so the timeout covers the full response rather than one idle
 // period between stream events.
@@ -797,6 +803,32 @@ impl ModelClient {
         Ok(request)
     }
 
+    /// Build a Chat Completions request body (`POST /v1/chat/completions`) for
+    /// providers with `wire_api = "chat"` — the OpenAI-compatible shape spoken by
+    /// LiteLLM, OpenRouter, Ollama, vLLM, etc. Mirrors `build_responses_request`
+    /// but maps the Responses-shaped conversation into Chat `messages` and re-nests
+    /// tools under `type: "function"`. Reasoning/verbosity/service-tier and other
+    /// Responses-only controls are intentionally omitted (no chat equivalent).
+    fn build_chat_completions_request(
+        &self,
+        prompt: &Prompt,
+        model_info: &ModelInfo,
+    ) -> Result<ChatCompletionsRequest> {
+        let input = prompt.get_formatted_input_for_request(model_info.use_responses_lite);
+        let messages = build_chat_messages(&input, &prompt.base_instructions.text);
+        let tools = create_tools_json_for_chat_completions(&prompt.tools)?;
+        Ok(ChatCompletionsRequest {
+            model: model_info.slug.clone(),
+            messages,
+            tools,
+            tool_choice: "auto".to_string(),
+            stream: true,
+            stream_options: ChatStreamOptions {
+                include_usage: true,
+            },
+        })
+    }
+
     /// Returns whether the Responses-over-WebSocket transport is active for this session.
     ///
     /// WebSocket use is controlled by provider capability and session-scoped fallback state.
@@ -1344,6 +1376,118 @@ impl ModelClientSession {
         }
     }
 
+    /// Streams a turn via the Chat Completions HTTP transport (`wire_api = "chat"`).
+    ///
+    /// Mirrors `stream_responses_api` (auth-unauthorized retry loop, telemetry, and
+    /// `map_response_stream` reuse) but posts a Chat Completions body and parses the
+    /// `chat.completion.chunk` SSE stream. There is no WebSocket variant for Chat.
+    #[instrument(
+        name = "model_client.stream_chat_completions_api",
+        level = "info",
+        skip_all,
+        fields(
+            transport = "chat_http",
+            http.method = "POST",
+            api.path = "chat/completions",
+            turn.has_metadata_header = turn_metadata_header.is_some()
+        )
+    )]
+    async fn stream_chat_completions_api(
+        &self,
+        window_id: &str,
+        prompt: &Prompt,
+        model_info: &ModelInfo,
+        session_telemetry: &SessionTelemetry,
+        turn_metadata_header: Option<&str>,
+        inference_trace: &InferenceTraceContext,
+    ) -> Result<ResponseStream> {
+        let auth_manager = self.client.state.provider.auth_manager();
+        let mut auth_recovery = auth_manager
+            .as_ref()
+            .map(AuthManager::unauthorized_recovery);
+        let mut pending_retry = PendingUnauthorizedRetry::default();
+        loop {
+            let client_setup = self.client.current_client_setup().await?;
+            let transport = ReqwestTransport::new(build_reqwest_client());
+            let request_auth_context = AuthRequestTelemetryContext::new(
+                client_setup.auth.as_ref().map(CodexAuth::auth_mode),
+                client_setup.api_auth.as_ref(),
+                pending_retry,
+            );
+            let (request_telemetry, sse_telemetry) = Self::build_streaming_telemetry(
+                session_telemetry,
+                request_auth_context,
+                RequestRouteTelemetry::for_endpoint(RESPONSES_ENDPOINT),
+                self.client.state.auth_env_telemetry.clone(),
+            );
+            let compression = self.responses_request_compression(client_setup.auth.as_ref());
+            let mut options = self
+                .build_responses_options(
+                    window_id,
+                    turn_metadata_header,
+                    compression,
+                    model_info.use_responses_lite,
+                )
+                .await;
+
+            let request = self
+                .client
+                .build_chat_completions_request(prompt, model_info)?;
+            let inference_trace_attempt = inference_trace.start_attempt();
+            inference_trace_attempt.add_request_headers(&mut options.extra_headers);
+            inference_trace_attempt.record_started(&request);
+            let client = ApiChatCompletionsClient::new(
+                transport,
+                client_setup.api_provider,
+                client_setup.api_auth,
+            )
+            .with_telemetry(Some(request_telemetry), Some(sse_telemetry));
+            let stream_result = client.stream_request(request, options).await;
+
+            match stream_result {
+                Ok(stream) => {
+                    let (stream, _) = map_response_stream(
+                        stream,
+                        session_telemetry.clone(),
+                        inference_trace_attempt,
+                    );
+                    return Ok(stream);
+                }
+                Err(ApiError::Transport(
+                    unauthorized_transport @ TransportError::Http { status, .. },
+                )) if status == StatusCode::UNAUTHORIZED => {
+                    let response_debug_context =
+                        extract_response_debug_context(&unauthorized_transport);
+                    inference_trace_attempt.record_failed(
+                        &unauthorized_transport,
+                        response_debug_context.request_id.as_deref(),
+                        /*output_items*/ &[],
+                    );
+                    pending_retry = PendingUnauthorizedRetry::from_recovery(
+                        handle_unauthorized(
+                            unauthorized_transport,
+                            &mut auth_recovery,
+                            session_telemetry,
+                        )
+                        .await?,
+                    );
+                    continue;
+                }
+                Err(err) => {
+                    let response_debug_context =
+                        extract_response_debug_context_from_api_error(&err);
+                    let err = map_api_error(err);
+                    inference_trace_attempt.record_failed(
+                        &err,
+                        response_debug_context.request_id.as_deref(),
+                        /*output_items*/ &[],
+                    );
+                    return Err(err);
+                }
+            }
+        }
+    }
+
     /// Streams a turn via the Responses API over WebSocket transport.
     #[allow(clippy::too_many_arguments)]
     #[instrument(
@@ -1653,6 +1797,17 @@ impl ModelClientSession {
                     effort,
                     summary,
                     service_tier,
+                    turn_metadata_header,
+                    inference_trace,
+                )
+                .await
+            }
+            WireApi::Chat => {
+                self.stream_chat_completions_api(
+                    window_id,
+                    prompt,
+                    model_info,
+                    session_telemetry,
                     turn_metadata_header,
                     inference_trace,
                 )

@@ -107,16 +107,18 @@ env_http_headers = { "X-Example-Env-Header" = "EXAMPLE_ENV_VAR" }
 }
 
 #[test]
-fn test_deserialize_chat_wire_api_shows_helpful_error() {
+fn test_deserialize_chat_wire_api() {
+    // Browser Harness re-adds Chat Completions support so the agent can drive any
+    // model behind a LiteLLM-style OpenAI-compatible proxy.
     let provider_toml = r#"
-name = "OpenAI using Chat Completions"
-base_url = "https://api.openai.com/v1"
-env_key = "OPENAI_API_KEY"
+name = "LiteLLM"
+base_url = "http://localhost:4000/v1"
+env_key = "LITELLM_API_KEY"
 wire_api = "chat"
         "#;
 
-    let err = toml::from_str::<ModelProviderInfo>(provider_toml).unwrap_err();
-    assert!(err.to_string().contains(CHAT_WIRE_API_REMOVED_ERROR));
+    let provider: ModelProviderInfo = toml::from_str(provider_toml).unwrap();
+    assert_eq!(provider.wire_api, WireApi::Chat);
 }
 
 #[test]

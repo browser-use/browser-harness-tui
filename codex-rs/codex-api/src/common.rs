@@ -1,6 +1,7 @@
 use crate::error::ApiError;
 use codex_protocol::config_types::ReasoningSummary as ReasoningSummaryConfig;
 use codex_protocol::config_types::Verbosity as VerbosityConfig;
+use codex_protocol::models::ContentItem;
 use codex_protocol::models::ResponseItem;
 use codex_protocol::openai_models::ReasoningEffort as ReasoningEffortConfig;
 use codex_protocol::protocol::ModelVerification;
@@ -200,6 +201,104 @@ pub struct ResponsesApiRequest {
     pub text: Option<TextControls>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub client_metadata: Option<HashMap<String, String>>,
+}
+
+/// Canonical request body for the OpenAI Chat Completions API
+/// (`POST /v1/chat/completions`). This is the OpenAI-compatible shape spoken by
+/// LiteLLM, OpenRouter, Ollama, vLLM, and most third-party gateways.
+///
+/// Unlike [`ResponsesApiRequest`], `messages`/`tools` are pre-serialized into
+/// generic JSON because the Chat wire format differs from the Responses item
+/// shape produced by `ResponseItem`'s serde.
+#[derive(Debug, Serialize, Clone, PartialEq)]
+pub struct ChatCompletionsRequest {
+    pub model: String,
+    pub messages: Vec<Value>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub tools: Vec<Value>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub tool_choice: String,
+    pub stream: bool,
+    pub stream_options: ChatStreamOptions,
+}
+
+#[derive(Debug, Serialize, Clone, PartialEq)]
+pub struct ChatStreamOptions {
+    /// Request a trailing usage chunk so token accounting is available even when
+    /// streaming.
+    pub include_usage: bool,
+}
+
+/// Maps internal [`ResponseItem`]s (the Responses-shaped conversation history)
+/// plus `base_instructions` into a list of Chat Completions `messages`.
+///
+/// Items with no Chat representation (reasoning, compaction, web/image/tool
+/// search, etc.) are skipped. Images are dropped for v1.
+pub fn build_chat_messages(input: &[ResponseItem], base_instructions: &str) -> Vec<Value> {
+    let mut messages: Vec<Value> = Vec::new();
+
+    if !base_instructions.is_empty() {
+        messages.push(serde_json::json!({
+            "role": "system",
+            "content": base_instructions,
+        }));
+    }
+
+    for item in input {
+        match item {
+            ResponseItem::Message { role, content, .. } => {
+                let text = content
+                    .iter()
+                    .filter_map(content_item_text)
+                    .collect::<Vec<_>>()
+                    .join("");
+                messages.push(serde_json::json!({
+                    "role": role,
+                    "content": text,
+                }));
+            }
+            ResponseItem::FunctionCall {
+                name,
+                arguments,
+                call_id,
+                ..
+            } => {
+                messages.push(serde_json::json!({
+                    "role": "assistant",
+                    "content": Value::Null,
+                    "tool_calls": [{
+                        "id": call_id,
+                        "type": "function",
+                        "function": {
+                            "name": name,
+                            // `arguments` is already a JSON string; pass through.
+                            "arguments": arguments,
+                        },
+                    }],
+                }));
+            }
+            ResponseItem::FunctionCallOutput { call_id, output } => {
+                let content = output.body.to_text().unwrap_or_default();
+                messages.push(serde_json::json!({
+                    "role": "tool",
+                    "tool_call_id": call_id,
+                    "content": content,
+                }));
+            }
+            // Reasoning / Compaction / tool-search / web-search / image-gen and
+            // other exotic items have no Chat Completions representation.
+            _ => {}
+        }
+    }
+
+    messages
+}
+
+fn content_item_text(item: &ContentItem) -> Option<String> {
+    match item {
+        ContentItem::InputText { text } | ContentItem::OutputText { text } => Some(text.clone()),
+        ContentItem::InputImage { .. } => None,
+    }
 }
 
 impl From<&ResponsesApiRequest> for ResponseCreateWsRequest {
