@@ -160,6 +160,11 @@ pub async fn process_sse(
     let mut created_emitted = false;
     let mut response_id = String::new();
     let mut text_buffer = String::new();
+    // Whether we have announced the assistant message item to the consumer.
+    // Text deltas are dropped ("OutputTextDelta without active item") unless an
+    // `OutputItemAdded` establishes the active item first — mirror the Responses
+    // parser, which emits `response.output_item.added` before text deltas flow.
+    let mut message_item_added = false;
     let mut tool_calls: Vec<ToolCallAccumulator> = Vec::new();
     let mut token_usage: Option<TokenUsage> = None;
     let mut saw_finish = false;
@@ -249,6 +254,26 @@ pub async fn process_sse(
             if let Some(content) = choice.delta.content
                 && !content.is_empty()
             {
+                // Announce the (empty) assistant message item before the first
+                // delta so the consumer has an active item to stream into. The
+                // full text is delivered again in `emit_completion`'s
+                // `OutputItemDone`, which finalizes the item.
+                if !message_item_added {
+                    message_item_added = true;
+                    let added = ResponseItem::Message {
+                        id: None,
+                        role: "assistant".to_string(),
+                        content: Vec::new(),
+                        phase: None,
+                    };
+                    if tx_event
+                        .send(Ok(ResponseEvent::OutputItemAdded(added)))
+                        .await
+                        .is_err()
+                    {
+                        return;
+                    }
+                }
                 text_buffer.push_str(&content);
                 if tx_event
                     .send(Ok(ResponseEvent::OutputTextDelta(content)))
@@ -414,21 +439,26 @@ mod tests {
         ])
         .await;
 
-        // Created, OutputTextDelta("Hello"), OutputTextDelta(" world"),
-        // OutputItemDone(Message), OutputItemDone(FunctionCall), Completed
+        // Created, OutputItemAdded(Message), OutputTextDelta("Hello"),
+        // OutputTextDelta(" world"), OutputItemDone(Message),
+        // OutputItemDone(FunctionCall), Completed
         assert_matches!(events[0], Ok(ResponseEvent::Created));
-        assert_matches!(&events[1], Ok(ResponseEvent::OutputTextDelta(d)) if d == "Hello");
-        assert_matches!(&events[2], Ok(ResponseEvent::OutputTextDelta(d)) if d == " world");
+        assert_matches!(
+            &events[1],
+            Ok(ResponseEvent::OutputItemAdded(ResponseItem::Message { role, .. })) if role == "assistant"
+        );
+        assert_matches!(&events[2], Ok(ResponseEvent::OutputTextDelta(d)) if d == "Hello");
+        assert_matches!(&events[3], Ok(ResponseEvent::OutputTextDelta(d)) if d == " world");
 
         assert_matches!(
-            &events[3],
+            &events[4],
             Ok(ResponseEvent::OutputItemDone(ResponseItem::Message { role, content, .. }))
                 if role == "assistant"
                     && matches!(content.as_slice(), [ContentItem::OutputText { text }] if text == "Hello world")
         );
 
         assert_matches!(
-            &events[4],
+            &events[5],
             Ok(ResponseEvent::OutputItemDone(ResponseItem::FunctionCall {
                 name,
                 arguments,
@@ -439,7 +469,7 @@ mod tests {
                 && call_id == "call_1"
         );
 
-        match &events[5] {
+        match &events[6] {
             Ok(ResponseEvent::Completed {
                 response_id,
                 token_usage,
@@ -457,7 +487,7 @@ mod tests {
             other => panic!("unexpected final event: {other:?}"),
         }
 
-        assert_eq!(events.len(), 6);
+        assert_eq!(events.len(), 7);
     }
 
     #[tokio::test]
@@ -468,16 +498,20 @@ mod tests {
         let events = collect_events(&[chunk1.as_bytes()]).await;
 
         assert_matches!(events[0], Ok(ResponseEvent::Created));
-        assert_matches!(&events[1], Ok(ResponseEvent::OutputTextDelta(d)) if d == "hi");
         assert_matches!(
-            &events[2],
+            &events[1],
+            Ok(ResponseEvent::OutputItemAdded(ResponseItem::Message { .. }))
+        );
+        assert_matches!(&events[2], Ok(ResponseEvent::OutputTextDelta(d)) if d == "hi");
+        assert_matches!(
+            &events[3],
             Ok(ResponseEvent::OutputItemDone(ResponseItem::Message { .. }))
         );
         assert_matches!(
-            &events[3],
+            &events[4],
             Ok(ResponseEvent::Completed { response_id, .. }) if response_id == "c"
         );
-        assert_eq!(events.len(), 4);
+        assert_eq!(events.len(), 5);
     }
 
     #[tokio::test]
@@ -487,7 +521,11 @@ mod tests {
         let events = collect_events(&[chunk1.as_bytes()]).await;
 
         assert_matches!(events[0], Ok(ResponseEvent::Created));
-        assert_matches!(&events[1], Ok(ResponseEvent::OutputTextDelta(_)));
+        assert_matches!(
+            &events[1],
+            Ok(ResponseEvent::OutputItemAdded(ResponseItem::Message { .. }))
+        );
+        assert_matches!(&events[2], Ok(ResponseEvent::OutputTextDelta(_)));
         match events.last() {
             Some(Err(ApiError::Stream(msg))) => {
                 assert_eq!(msg, "stream closed before response.completed");
