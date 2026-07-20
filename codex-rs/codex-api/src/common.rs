@@ -267,19 +267,33 @@ pub fn build_chat_messages(input: &[ResponseItem], base_instructions: &str) -> V
                 call_id,
                 ..
             } => {
-                messages.push(serde_json::json!({
-                    "role": "assistant",
-                    "content": Value::Null,
-                    "tool_calls": [{
-                        "id": call_id,
-                        "type": "function",
-                        "function": {
-                            "name": name,
-                            // `arguments` is already a JSON string; pass through.
-                            "arguments": arguments,
-                        },
-                    }],
-                }));
+                let tool_call = serde_json::json!({
+                    "id": call_id,
+                    "type": "function",
+                    "function": {
+                        "name": name,
+                        // `arguments` is already a JSON string; pass through.
+                        "arguments": arguments,
+                    },
+                });
+                // Parallel tool calls must share one assistant message: strict
+                // Chat validation requires every tool_call_id of an assistant
+                // message to be answered before the next assistant message, so
+                // `assistant[call1], assistant[call2], tool(call1), ...` is
+                // rejected. Merge consecutive calls (skipped items such as
+                // reasoning emit nothing and do not break the run).
+                match messages.last_mut() {
+                    Some(last) if last.get("tool_calls").is_some() => {
+                        if let Some(calls) = last["tool_calls"].as_array_mut() {
+                            calls.push(tool_call);
+                        }
+                    }
+                    _ => messages.push(serde_json::json!({
+                        "role": "assistant",
+                        "content": Value::Null,
+                        "tool_calls": [tool_call],
+                    })),
+                }
             }
             ResponseItem::FunctionCallOutput { call_id, output } => {
                 let mut text = output.body.to_text().unwrap_or_default();
@@ -596,6 +610,79 @@ mod tests {
                 }),
             ]
         );
+    }
+
+    #[test]
+    fn parallel_function_calls_merge_into_one_assistant_message() {
+        let call = |id: &str| ResponseItem::FunctionCall {
+            id: None,
+            namespace: None,
+            name: "exec_command".to_string(),
+            arguments: "{}".to_string(),
+            call_id: id.to_string(),
+        };
+        let input = [
+            call("call_1"),
+            call("call_2"),
+            tool_output(
+                "call_1",
+                vec![FunctionCallOutputContentItem::InputText {
+                    text: "out 1".to_string(),
+                }],
+            ),
+            tool_output(
+                "call_2",
+                vec![FunctionCallOutputContentItem::InputText {
+                    text: "out 2".to_string(),
+                }],
+            ),
+        ];
+        let messages = build_chat_messages(&input, "");
+        let roles: Vec<&str> = messages
+            .iter()
+            .map(|m| m.get("role").and_then(Value::as_str).unwrap())
+            .collect();
+        assert_eq!(roles, vec!["assistant", "tool", "tool"]);
+        let ids: Vec<&str> = messages[0]["tool_calls"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| c["id"].as_str().unwrap())
+            .collect();
+        assert_eq!(ids, vec!["call_1", "call_2"]);
+    }
+
+    #[test]
+    fn function_call_after_tool_reply_starts_new_assistant_message() {
+        let call = |id: &str| ResponseItem::FunctionCall {
+            id: None,
+            namespace: None,
+            name: "exec_command".to_string(),
+            arguments: "{}".to_string(),
+            call_id: id.to_string(),
+        };
+        let input = [
+            call("call_1"),
+            tool_output(
+                "call_1",
+                vec![FunctionCallOutputContentItem::InputText {
+                    text: "out 1".to_string(),
+                }],
+            ),
+            call("call_2"),
+            tool_output(
+                "call_2",
+                vec![FunctionCallOutputContentItem::InputText {
+                    text: "out 2".to_string(),
+                }],
+            ),
+        ];
+        let messages = build_chat_messages(&input, "");
+        let roles: Vec<&str> = messages
+            .iter()
+            .map(|m| m.get("role").and_then(Value::as_str).unwrap())
+            .collect();
+        assert_eq!(roles, vec!["assistant", "tool", "assistant", "tool"]);
     }
 
     #[test]
