@@ -2,6 +2,9 @@ use crate::error::ApiError;
 use codex_protocol::config_types::ReasoningSummary as ReasoningSummaryConfig;
 use codex_protocol::config_types::Verbosity as VerbosityConfig;
 use codex_protocol::models::ContentItem;
+use codex_protocol::models::FunctionCallOutputBody;
+use codex_protocol::models::FunctionCallOutputContentItem;
+use codex_protocol::models::ImageDetail;
 use codex_protocol::models::ResponseItem;
 use codex_protocol::openai_models::ReasoningEffort as ReasoningEffortConfig;
 use codex_protocol::protocol::ModelVerification;
@@ -233,9 +236,15 @@ pub struct ChatStreamOptions {
 /// plus `base_instructions` into a list of Chat Completions `messages`.
 ///
 /// Items with no Chat representation (reasoning, compaction, web/image/tool
-/// search, etc.) are skipped. Images are dropped for v1.
+/// search, etc.) are skipped. Images map to `image_url` content parts. The
+/// Chat wire only accepts images on `user` messages, so images returned by
+/// tools (e.g. screenshots) are re-emitted as a `user` message after the
+/// contiguous run of `tool` replies they belong to — inserting a `user`
+/// message between the tool replies of one parallel-call batch would fail
+/// strict request validation.
 pub fn build_chat_messages(input: &[ResponseItem], base_instructions: &str) -> Vec<Value> {
     let mut messages: Vec<Value> = Vec::new();
+    let mut pending_tool_images: Vec<Value> = Vec::new();
 
     if !base_instructions.is_empty() {
         messages.push(serde_json::json!({
@@ -245,17 +254,12 @@ pub fn build_chat_messages(input: &[ResponseItem], base_instructions: &str) -> V
     }
 
     for item in input {
+        if !matches!(item, ResponseItem::FunctionCallOutput { .. }) {
+            messages.append(&mut pending_tool_images);
+        }
         match item {
             ResponseItem::Message { role, content, .. } => {
-                let text = content
-                    .iter()
-                    .filter_map(content_item_text)
-                    .collect::<Vec<_>>()
-                    .join("");
-                messages.push(serde_json::json!({
-                    "role": role,
-                    "content": text,
-                }));
+                messages.push(chat_message_from_content(role, content));
             }
             ResponseItem::FunctionCall {
                 name,
@@ -278,11 +282,27 @@ pub fn build_chat_messages(input: &[ResponseItem], base_instructions: &str) -> V
                 }));
             }
             ResponseItem::FunctionCallOutput { call_id, output } => {
-                let content = output.body.to_text().unwrap_or_default();
+                let mut text = output.body.to_text().unwrap_or_default();
+                let image_parts = tool_output_image_parts(&output.body);
+                if !image_parts.is_empty() {
+                    if !text.is_empty() {
+                        text.push('\n');
+                    }
+                    text.push_str("[image output attached in the next user message]");
+                    let mut parts = vec![serde_json::json!({
+                        "type": "text",
+                        "text": format!("Image output from tool call {call_id}:"),
+                    })];
+                    parts.extend(image_parts);
+                    pending_tool_images.push(serde_json::json!({
+                        "role": "user",
+                        "content": parts,
+                    }));
+                }
                 messages.push(serde_json::json!({
                     "role": "tool",
                     "tool_call_id": call_id,
-                    "content": content,
+                    "content": text,
                 }));
             }
             // Reasoning / Compaction / tool-search / web-search / image-gen and
@@ -290,14 +310,70 @@ pub fn build_chat_messages(input: &[ResponseItem], base_instructions: &str) -> V
             _ => {}
         }
     }
+    messages.append(&mut pending_tool_images);
 
     messages
 }
 
-fn content_item_text(item: &ContentItem) -> Option<String> {
-    match item {
-        ContentItem::InputText { text } | ContentItem::OutputText { text } => Some(text.clone()),
-        ContentItem::InputImage { .. } => None,
+fn chat_message_from_content(role: &str, content: &[ContentItem]) -> Value {
+    let mut plain_text = String::new();
+    let mut parts: Vec<Value> = Vec::new();
+    let mut has_image = false;
+    for item in content {
+        match item {
+            ContentItem::InputText { text } | ContentItem::OutputText { text } => {
+                plain_text.push_str(text);
+                parts.push(serde_json::json!({ "type": "text", "text": text }));
+            }
+            // The Chat wire only accepts image parts on `user` messages;
+            // images on other roles have no representation and are dropped.
+            ContentItem::InputImage { image_url, detail } if role == "user" => {
+                has_image = true;
+                parts.push(chat_image_part(image_url, *detail));
+            }
+            ContentItem::InputImage { .. } => {}
+        }
+    }
+    if has_image {
+        serde_json::json!({ "role": role, "content": parts })
+    } else {
+        serde_json::json!({ "role": role, "content": plain_text })
+    }
+}
+
+fn tool_output_image_parts(body: &FunctionCallOutputBody) -> Vec<Value> {
+    match body {
+        FunctionCallOutputBody::Text(_) => Vec::new(),
+        FunctionCallOutputBody::ContentItems(items) => items
+            .iter()
+            .filter_map(|item| match item {
+                FunctionCallOutputContentItem::InputImage { image_url, detail } => {
+                    Some(chat_image_part(image_url, *detail))
+                }
+                FunctionCallOutputContentItem::InputText { .. }
+                | FunctionCallOutputContentItem::EncryptedContent { .. } => None,
+            })
+            .collect(),
+    }
+}
+
+fn chat_image_part(image_url: &str, detail: Option<ImageDetail>) -> Value {
+    let detail = match detail {
+        Some(ImageDetail::Auto) => Some("auto"),
+        Some(ImageDetail::Low) => Some("low"),
+        Some(ImageDetail::High) => Some("high"),
+        // `original` is Responses-only; let the provider apply its default.
+        Some(ImageDetail::Original) | None => None,
+    };
+    match detail {
+        Some(detail) => serde_json::json!({
+            "type": "image_url",
+            "image_url": { "url": image_url, "detail": detail },
+        }),
+        None => serde_json::json!({
+            "type": "image_url",
+            "image_url": { "url": image_url },
+        }),
     }
 }
 
@@ -412,5 +488,139 @@ impl Stream for ResponseStream {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.rx_event.poll_recv(cx)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use codex_protocol::models::FunctionCallOutputPayload;
+    use serde_json::json;
+
+    fn user_message(content: Vec<ContentItem>) -> ResponseItem {
+        ResponseItem::Message {
+            id: None,
+            role: "user".to_string(),
+            content,
+            phase: None,
+        }
+    }
+
+    fn tool_output(call_id: &str, items: Vec<FunctionCallOutputContentItem>) -> ResponseItem {
+        ResponseItem::FunctionCallOutput {
+            call_id: call_id.to_string(),
+            output: FunctionCallOutputPayload::from_content_items(items),
+        }
+    }
+
+    #[test]
+    fn text_only_message_stays_plain_string() {
+        let input = [user_message(vec![ContentItem::InputText {
+            text: "hello".to_string(),
+        }])];
+        let messages = build_chat_messages(&input, "");
+        assert_eq!(messages, vec![json!({"role": "user", "content": "hello"})]);
+    }
+
+    #[test]
+    fn user_message_image_becomes_image_url_part() {
+        let input = [user_message(vec![
+            ContentItem::InputText {
+                text: "look at this".to_string(),
+            },
+            ContentItem::InputImage {
+                image_url: "data:image/png;base64,AAA".to_string(),
+                detail: Some(ImageDetail::High),
+            },
+        ])];
+        let messages = build_chat_messages(&input, "");
+        assert_eq!(
+            messages,
+            vec![json!({
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "look at this"},
+                    {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAA", "detail": "high"}},
+                ],
+            })]
+        );
+    }
+
+    #[test]
+    fn original_detail_is_omitted_from_image_part() {
+        let input = [user_message(vec![ContentItem::InputImage {
+            image_url: "data:image/png;base64,AAA".to_string(),
+            detail: Some(ImageDetail::Original),
+        }])];
+        let messages = build_chat_messages(&input, "");
+        assert_eq!(
+            messages,
+            vec![json!({
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAA"}},
+                ],
+            })]
+        );
+    }
+
+    #[test]
+    fn tool_output_image_reemitted_as_user_message() {
+        let input = [tool_output(
+            "call_1",
+            vec![
+                FunctionCallOutputContentItem::InputText {
+                    text: "screenshot captured".to_string(),
+                },
+                FunctionCallOutputContentItem::InputImage {
+                    image_url: "data:image/png;base64,BBB".to_string(),
+                    detail: None,
+                },
+            ],
+        )];
+        let messages = build_chat_messages(&input, "");
+        assert_eq!(
+            messages,
+            vec![
+                json!({
+                    "role": "tool",
+                    "tool_call_id": "call_1",
+                    "content": "screenshot captured\n[image output attached in the next user message]",
+                }),
+                json!({
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Image output from tool call call_1:"},
+                        {"type": "image_url", "image_url": {"url": "data:image/png;base64,BBB"}},
+                    ],
+                }),
+            ]
+        );
+    }
+
+    #[test]
+    fn parallel_tool_outputs_stay_contiguous_before_image_messages() {
+        let input = [
+            tool_output(
+                "call_1",
+                vec![FunctionCallOutputContentItem::InputImage {
+                    image_url: "data:image/png;base64,AAA".to_string(),
+                    detail: None,
+                }],
+            ),
+            tool_output(
+                "call_2",
+                vec![FunctionCallOutputContentItem::InputImage {
+                    image_url: "data:image/png;base64,BBB".to_string(),
+                    detail: None,
+                }],
+            ),
+        ];
+        let messages = build_chat_messages(&input, "");
+        let roles: Vec<&str> = messages
+            .iter()
+            .map(|m| m.get("role").and_then(Value::as_str).unwrap())
+            .collect();
+        assert_eq!(roles, vec!["tool", "tool", "user", "user"]);
     }
 }
