@@ -70,6 +70,40 @@ fn find_marketplace_plugin_finds_repo_marketplace_plugin() {
 }
 
 #[test]
+fn find_marketplace_plugin_supports_marketplace_root_local_source() {
+    let tmp = tempdir().unwrap();
+    let repo_root = tmp.path().join("repo");
+    fs::create_dir_all(repo_root.join(".git")).unwrap();
+    fs::create_dir_all(repo_root.join(".agents/plugins")).unwrap();
+    fs::write(
+        repo_root.join(".agents/plugins/marketplace.json"),
+        r#"{
+  "name": "lmnr",
+  "plugins": [
+    {
+      "name": "lmnr",
+      "source": "./"
+    }
+  ]
+}"#,
+    )
+    .unwrap();
+
+    let resolved = find_marketplace_plugin(
+        &AbsolutePathBuf::try_from(repo_root.join(".agents/plugins/marketplace.json")).unwrap(),
+        "lmnr",
+    )
+    .unwrap();
+
+    assert_eq!(
+        resolved.source,
+        MarketplacePluginSource::Local {
+            path: AbsolutePathBuf::try_from(repo_root.clone()).unwrap(),
+        }
+    );
+}
+
+#[test]
 fn find_marketplace_plugin_supports_alternate_layout_and_string_local_source() {
     let tmp = tempdir().unwrap();
     let repo_root = tmp.path().join("repo");
