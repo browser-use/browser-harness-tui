@@ -34,10 +34,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14
-            target: aarch64-apple-darwin
-          - os: macos-13
-            target: x86_64-apple-darwin
           # Built on Ubuntu 22.04 (glibc 2.35) so the dynamically-linked glibc
           # binary runs on 22.04+ runners, including 24.04 (glibc 2.39).
           - os: ubuntu-22.04
@@ -52,6 +48,13 @@ jobs:
 
       - name: Build codex-cli
         working-directory: codex-rs
+        # codegen-units=1 (workspace release profile) makes final codegen of the
+        # big crates memory-heavy enough to starve hosted runners ("runner lost
+        # communication"). Relax it for these binaries; eval/TUI use doesn't
+        # need the last few percent of codegen quality.
+        env:
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
+          CARGO_PROFILE_RELEASE_DEBUG: "0"
         run: cargo build --release -p codex-cli --target ${{ matrix.target }}
 
       - name: Strip and compress
