@@ -48,6 +48,13 @@ opentelemetry_sdk = { workspace = true, features = [
 http = { workspace = true }
 os_info = { workspace = true }
 reqwest = { workspace = true, features = ["blocking", "rustls-tls"] }
+# `opentelemetry-http` implements `HttpClient` for reqwest 0.13 only, so the
+# OTLP exporter clients in `otlp.rs` are built with this aliased dependency
+# while the rest of the crate stays on the workspace reqwest 0.12.
+reqwest-otlp = { package = "reqwest", version = "0.13", features = [
+    "blocking",
+    "rustls",
+] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 strum_macros = { workspace = true }
