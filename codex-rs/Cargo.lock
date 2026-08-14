@@ -3506,6 +3506,7 @@ dependencies = [
 name = "codex-otel"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
  "chrono",
  "codex-api",
  "codex-app-server-protocol",
@@ -3517,13 +3518,13 @@ dependencies = [
  "http 1.4.0",
  "opentelemetry",
  "opentelemetry-appender-tracing",
+ "opentelemetry-http",
  "opentelemetry-otlp",
  "opentelemetry-semantic-conventions",
  "opentelemetry_sdk",
  "os_info",
  "pretty_assertions",
  "reqwest 0.12.28",
- "reqwest 0.13.4",
  "serde",
  "serde_json",
  "strum_macros 0.28.0",
@@ -11420,11 +11421,9 @@ checksum = "219c5811de6525e5416c7d5d53bb656d3afdbc6c5af816e0802bcfa42dbdc1c3"
 dependencies = [
  "base64 0.22.1",
  "bytes",
- "encoding_rs",
  "futures-channel",
  "futures-core",
  "futures-util",
- "h2",
  "http 1.4.0",
  "http-body 1.0.1",
  "http-body-util",
@@ -11433,7 +11432,6 @@ dependencies = [
  "hyper-util",
  "js-sys",
  "log",
- "mime",
  "percent-encoding",
  "pin-project-lite",
  "quinn",
