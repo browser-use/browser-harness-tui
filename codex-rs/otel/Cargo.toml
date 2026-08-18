@@ -13,6 +13,7 @@ path = "src/lib.rs"
 workspace = true
 
 [dependencies]
+async-trait = { workspace = true }
 chrono = { workspace = true }
 codex-utils-absolute-path = { workspace = true }
 codex-utils-string = { workspace = true }
@@ -23,6 +24,7 @@ eventsource-stream = { workspace = true }
 gethostname = { workspace = true }
 opentelemetry = { workspace = true, features = ["logs", "metrics", "trace"] }
 opentelemetry-appender-tracing = { workspace = true }
+opentelemetry-http = { workspace = true }
 opentelemetry-otlp = { workspace = true, features = [
     "grpc-tonic",
     "http-proto",
@@ -30,8 +32,6 @@ opentelemetry-otlp = { workspace = true, features = [
     "logs",
     "metrics",
     "trace",
-    "reqwest-blocking-client",
-    "reqwest-rustls",
     "tls",
     "tls-roots",
 ]}
