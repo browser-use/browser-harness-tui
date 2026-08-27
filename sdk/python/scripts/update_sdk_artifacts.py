@@ -413,14 +413,38 @@ def _variant_collision_key(base: str, variant: dict[str, Any], generated_name: s
     return "|".join(parts)
 
 
-def _set_discriminator_titles(props: dict[str, Any], owner: str) -> None:
-    for key in DISCRIMINATOR_KEYS:
-        prop = props.get(key)
-        if not isinstance(prop, dict):
-            continue
-        if _string_literal(prop) is None or "title" in prop:
-            continue
-        prop["title"] = f"{owner}{_to_pascal_case(key)}"
+def _strip_inline_literal_titles(value: Any) -> None:
+    """Drop titles from single-value string-literal property subschemas.
+
+    The runtime schema titles discriminator consts (e.g. `ApiKeyAccountType`).
+    datamodel-code-generator >= 0.64 combined with --use-title-as-name turns
+    every titled subschema into its own named RootModel class, which would wrap
+    fields that should stay inline `Literal[...]`s. Stripping those titles
+    keeps the generated field shape of older generator versions.
+    """
+    if isinstance(value, list):
+        for item in value:
+            _strip_inline_literal_titles(item)
+        return
+
+    if not isinstance(value, dict):
+        return
+
+    props = value.get("properties")
+    if isinstance(props, dict):
+        for prop in props.values():
+            if isinstance(prop, dict) and _string_literal(prop) is not None:
+                prop.pop("title", None)
+
+    for key in ("oneOf", "anyOf"):
+        branches = value.get(key)
+        if isinstance(branches, list):
+            for branch in branches:
+                if isinstance(branch, dict) and _string_literal(branch) is not None:
+                    branch.pop("title", None)
+
+    for child in value.values():
+        _strip_inline_literal_titles(child)
 
 
 def _annotate_variant_list(variants: list[Any], base: str | None) -> None:
@@ -452,12 +476,6 @@ def _annotate_variant_list(variants: list[Any], base: str | None) -> None:
                 )
             variant["title"] = generated_name
             seen.add(generated_name)
-            variant_name = generated_name
-
-        if isinstance(variant_name, str):
-            props = variant.get("properties")
-            if isinstance(props, dict):
-                _set_discriminator_titles(props, variant_name)
 
         _annotate_schema(variant, base)
 
@@ -470,11 +488,6 @@ def _annotate_schema(value: Any, base: str | None = None) -> None:
 
     if not isinstance(value, dict):
         return
-
-    owner = value.get("title")
-    props = value.get("properties")
-    if isinstance(owner, str) and isinstance(props, dict):
-        _set_discriminator_titles(props, owner)
 
     one_of = value.get("oneOf")
     if isinstance(one_of, list):
@@ -533,6 +546,7 @@ def _normalized_schema_bundle_text(schema_dir: Path) -> str:
     # Normalize the schema into something datamodel-code-generator can map to
     # stable class names instead of anonymous numbered helpers.
     _annotate_schema(schema)
+    _strip_inline_literal_titles(schema)
     return json.dumps(schema, indent=2, sort_keys=True) + "\n"
 
 
@@ -558,8 +572,10 @@ def generate_v2_all(schema_dir: Path) -> None:
                 str(out_path),
                 "--output-model-type",
                 "pydantic_v2.BaseModel",
+                # Match the package's declared requires-python floor so the
+                # generated module never uses 3.11-only names like StrEnum.
                 "--target-python-version",
-                "3.11",
+                "3.10",
                 "--use-standard-collections",
                 "--enum-field-as-literal",
                 "one",
