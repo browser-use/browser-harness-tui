@@ -120,6 +120,9 @@ members = [
     "model-provider",
 ]
 resolver = "2"
+# Patched third-party sources kept out of the workspace graph; see
+# [patch.crates-io] below.
+exclude = ["vendor/rama-dns"]
 
 [workspace.package]
 version = "0.0.0"
@@ -535,6 +538,10 @@ crossterm = { git = "https://github.com/nornagon/crossterm", rev = "87db8bfa6dc9
 ratatui = { git = "https://github.com/nornagon/ratatui", rev = "9b2ad1298408c45918ee9f8241a6f95498cdbed2" }
 tokio-tungstenite = { git = "https://github.com/openai-oss-forks/tokio-tungstenite", rev = "132f5b39c862e3a970f731d709608b3e6276d5f6" }
 tungstenite = { git = "https://github.com/openai-oss-forks/tungstenite-rs", rev = "9200079d3b54a1ff51072e24d81fd354f085156f" }
+# Local fork of rama-dns 0.3.0-alpha.4 that depends on hickory-resolver 0.26.1
+# instead of 0.25 (RUSTSEC-2026-0118 / RUSTSEC-2026-0119). Drop this once
+# codex-network-proxy can move to rama 0.3.0, which no longer pulls in rama-dns.
+rama-dns = { path = "vendor/rama-dns" }
 
 # Uncomment to debug local changes.
 # rmcp = { path = "../../rust-sdk/crates/rmcp" }
