@@ -18,6 +18,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 CARGO_RS_ROOT = ROOT / "codex-rs"
+# Third-party crates vendored verbatim for `[patch.crates-io]`. They keep their
+# upstream `[package]` metadata, lints and features, so workspace manifest
+# policy does not apply to them.
+VENDOR_ROOT = CARGO_RS_ROOT / "vendor"
 WORKSPACE_PACKAGE_FIELDS = ("version", "edition", "license")
 TOP_LEVEL_NAME_EXCEPTIONS = {
     "windows-sandbox-rs": "codex-windows-sandbox",
@@ -379,8 +383,12 @@ def cargo_manifests() -> list[Path]:
     return sorted(
         path
         for path in CARGO_RS_ROOT.rglob("Cargo.toml")
-        if path != CARGO_RS_ROOT / "Cargo.toml"
+        if path != CARGO_RS_ROOT / "Cargo.toml" and not is_vendored(path)
     )
+
+
+def is_vendored(path: Path) -> bool:
+    return path.is_relative_to(VENDOR_ROOT)
 
 
 def manifests_to_verify() -> list[Path]:
