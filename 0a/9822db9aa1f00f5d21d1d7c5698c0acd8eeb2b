@@ -1,0 +1,50 @@
+codex-rs/Cargo.lock
+  ai_agent 7517-7518,7520,7528,7531-7549,7551-7552,7562,7564,7568,7571-7572,7574,7577,7580,8336-8338,10415-10423
+codex-rs/vendor/rama-dns/PATCH.md
+  ai_agent 1-68
+codex-rs/vendor/rama-dns/README.md
+  ai_agent 1-49
+codex-rs/vendor/rama-dns/src/global.rs
+  ai_agent 1-108
+codex-rs/vendor/rama-dns/src/in_memory.rs
+  ai_agent 1-421
+codex-rs/vendor/rama-dns/src/chain.rs
+  ai_agent 1-175
+codex-rs/vendor/rama-dns/Cargo.toml
+  ai_agent 1-161
+codex-rs/Cargo.toml
+  s_b44a7337939018::t_0f42bb1841329b 541-544
+  s_b44a7337939018::t_36fe533a20f963 123-125
+codex-rs/vendor/rama-dns/src/deny_all.rs
+  ai_agent 1-40
+codex-rs/vendor/rama-dns/src/lib.rs
+  ai_agent 1-175
+codex-rs/vendor/rama-dns/src/tuple.rs
+  ai_agent 1-71
+codex-rs/vendor/rama-dns/tests/smoke.rs
+  ai_agent 1-59
+codex-rs/vendor/rama-dns/src/hickory.rs
+  ai_agent 1-243
+codex-rs/vendor/rama-dns/src/variant.rs
+  ai_agent 1-170
+MODULE.bazel.lock
+  ai_agent 1073-1075,1329,1369
+codex-rs/vendor/rama-dns/src/boxed.rs
+  ai_agent 1-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0a9822db9aa1f00f5d21d1d7c5698c0acd8eeb2b",
+  "prompts": {},
+  "sessions": {
+    "s_b44a7337939018": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bef0939-b37e-41cb-aa4b-90ff1599a536",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Saurav Panda <sgp65@cornell.edu>"
+    }
+  }
+}
