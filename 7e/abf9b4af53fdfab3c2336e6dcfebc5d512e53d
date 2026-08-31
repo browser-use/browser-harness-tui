@@ -1,0 +1,20 @@
+codex-rs/network-proxy/tests/dns_e2e.rs
+  s_b44a7337939018::t_1bcdc5a1551102 6-9,16,20,28,31-37,74-75,91-108,114,125-127,133,135-136,138-157,160,162,164-165,168-169,171,175-204,208,210-214,217,219-223,225-227,229
+  s_b44a7337939018::t_9854c3718d38b4 18,109-113,115-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7eabf9b4af53fdfab3c2336e6dcfebc5d512e53d",
+  "prompts": {},
+  "sessions": {
+    "s_b44a7337939018": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bef0939-b37e-41cb-aa4b-90ff1599a536",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Saurav Panda <sgp65@cornell.edu>"
+    }
+  }
+}
