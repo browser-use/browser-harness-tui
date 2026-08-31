@@ -3479,6 +3479,7 @@ dependencies = [
  "rama-tcp",
  "rama-tls-rustls",
  "rama-unix",
+ "reqwest 0.12.28",
  "rustls-native-certs",
  "serde",
  "serde_json",
