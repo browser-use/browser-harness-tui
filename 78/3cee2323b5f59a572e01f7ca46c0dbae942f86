@@ -1,0 +1,29 @@
+codex-rs/Cargo.lock
+  ai_agent 3482
+.github/scripts/verify_cargo_workspace_manifests.py
+  s_b44a7337939018::t_c017ec7d944834 21-24,386,390-391
+codex-rs/network-proxy/Cargo.toml
+  s_b44a7337939018::t_a33d4f92d281ad 44
+codex-rs/network-proxy/tests/dns_e2e.rs
+  s_b44a7337939018::t_c70cf4bf909f26 37-39
+  s_b44a7337939018::t_129b5a57f46a43 1-34,41-43,48-50,57-58,67-135,137-138
+  s_b44a7337939018::t_a33d4f92d281ad 136
+  s_b44a7337939018::t_d4fcd593f2190a 44-47,51-56,59-66
+  s_b44a7337939018::t_43094051f4e919 35-36,40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "783cee2323b5f59a572e01f7ca46c0dbae942f86",
+  "prompts": {},
+  "sessions": {
+    "s_b44a7337939018": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bef0939-b37e-41cb-aa4b-90ff1599a536",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Saurav Panda <sgp65@cornell.edu>"
+    }
+  }
+}
