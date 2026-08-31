@@ -41,7 +41,6 @@ sha2 = { workspace = true }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }
-reqwest = { workspace = true }
 tempfile = { workspace = true }
 
 [target.'cfg(target_family = "unix")'.dependencies]
