@@ -48,8 +48,10 @@ use std::path::PathBuf;
 use codex_utils_absolute_path::AbsolutePathBuf;
 use unicode_width::UnicodeWidthChar;
 
+/// Replacement for a tab character in rendered diff content.
+const TAB_REPLACEMENT: &str = "    ";
 /// Display width of a tab character in columns.
-const TAB_WIDTH: usize = 4;
+const TAB_WIDTH: usize = TAB_REPLACEMENT.len();
 
 // -- Diff background palette --------------------------------------------------
 //
@@ -989,7 +991,10 @@ fn wrap_styled_spans(spans: &[RtSpan<'static>], max_cols: usize) -> Vec<Vec<RtSp
                     break;
                 };
                 let ch_len = ch.len_utf8();
-                current_line.push(RtSpan::styled(remaining[..ch_len].to_string(), style));
+                current_line.push(RtSpan::styled(
+                    remaining[..ch_len].replace('\t', TAB_REPLACEMENT),
+                    style,
+                ));
                 // Use fallback width 1 (not 0) so this branch always advances
                 // even if `ch` has unknown/zero display width.
                 col = ch.width().unwrap_or(if ch == '\t' { TAB_WIDTH } else { 1 });
@@ -998,7 +1003,7 @@ fn wrap_styled_spans(spans: &[RtSpan<'static>], max_cols: usize) -> Vec<Vec<RtSp
             }
 
             let (chunk, rest) = remaining.split_at(byte_end);
-            current_line.push(RtSpan::styled(chunk.to_string(), style));
+            current_line.push(RtSpan::styled(chunk.replace('\t', TAB_REPLACEMENT), style));
             col += chars_col;
             remaining = rest;
 
@@ -1313,7 +1318,6 @@ mod tests {
     use ratatui::backend::TestBackend;
     use ratatui::text::Text;
     use ratatui::widgets::Paragraph;
-    use ratatui::widgets::WidgetRef;
     use ratatui::widgets::Wrap;
 
     #[test]
@@ -1366,9 +1370,18 @@ mod tests {
             .draw(|f| {
                 Paragraph::new(Text::from(lines))
                     .wrap(Wrap { trim: false })
-                    .render_ref(f.area(), f.buffer_mut())
+                    .render(f.area(), f.buffer_mut())
             })
             .expect("draw");
+        assert!(
+            terminal
+                .backend()
+                .buffer()
+                .content()
+                .iter()
+                .all(|cell| !cell.symbol().contains('\t')),
+            "diff buffer should not contain literal tabs"
+        );
         assert_snapshot!(name, terminal.backend());
     }
 
@@ -2320,7 +2333,7 @@ mod tests {
                     .collect::<String>()
             })
             .collect();
-        assert_eq!(line_text, vec!["abcd", "\t", "界"]);
+        assert_eq!(line_text, vec!["abcd", "    ", "界"]);
 
         let line_width = |line: &[RtSpan<'static>]| -> usize {
             line.iter()

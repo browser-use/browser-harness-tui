@@ -48,7 +48,6 @@ use ratatui::style::Stylize;
 use ratatui::text::Line;
 use ratatui::text::Span;
 use ratatui::widgets::Paragraph;
-use ratatui::widgets::WidgetRef;
 use ratatui::widgets::Wrap;
 use unicode_width::UnicodeWidthStr;
 
@@ -129,7 +128,7 @@ impl Renderable for DelayedLoadingHeader {
             lines.push(Line::from(note.as_str().dim()));
         }
 
-        Paragraph::new(lines).render_ref(area, buf);
+        Paragraph::new(lines).render(area, buf);
     }
 
     fn desired_height(&self, _width: u16) -> u16 {

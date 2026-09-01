@@ -4,6 +4,8 @@
 //! resuming/forking saved sessions, replacing ChatWidget instances, and maintaining the agent picker
 //! cache used for multi-agent navigation.
 
+use std::io;
+
 use super::*;
 
 impl App {
@@ -461,7 +463,7 @@ impl App {
         terminal: &mut crate::custom_terminal::Terminal<B>,
     ) -> Result<()>
     where
-        B: Backend + Write,
+        B: Backend<Error = io::Error> + Write,
     {
         terminal.clear_scrollback_and_visible_screen_ansi()?;
         let mut area = terminal.viewport_area;
